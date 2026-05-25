@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+@theme {
+  --color-stone-850: rgb(34, 34, 38);
+  --color-stone-450: rgb(150, 150, 158);
+  --color-stone-650: rgb(90, 90, 98);
+  --color-amber-450: rgb(245, 158, 11);
+  --color-amber-550: rgb(217, 119, 6);
+}
+
+@keyframes barberpole {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 50px 50px;
+  }
+}
+
+/* Fallback utilities if JIT isn't applied */
+@utility animate-barberpole {
+  animation: barberpole 1.2s linear infinite;
+}
