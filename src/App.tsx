@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { BookingState, Booking, Barber, Service, BarberStatus } from "./types";
 import { ServiceSelection } from "./components/ServiceSelection";
@@ -16,6 +16,7 @@ import {
   Sparkles,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
   Lock,
 } from "lucide-react";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
@@ -42,6 +43,21 @@ export default function App() {
   const [isConfirming, setIsConfirming] = useState<boolean>(false);
   const [isMobileSummaryExpanded, setIsMobileSummaryExpanded] =
     useState<boolean>(false);
+
+  const navRef = useRef<HTMLDivElement>(null);
+  const [isNavVisible, setIsNavVisible] = useState<boolean>(true);
+
+  React.useEffect(() => {
+    setIsNavVisible(true);
+    const el = navRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsNavVisible(entry.isIntersecting),
+      { threshold: 0.5 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [currentStep, isConfirming]);
 
   const [bookingState, setBookingState] = useState<BookingState>({
     service: null,
@@ -322,7 +338,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0F0F10] text-[#E4E4E7] font-sans antialiased relative pt-8 pb-32 sm:py-12 px-4 md:px-8 selection:bg-amber-500 selection:text-stone-900">
+    <div className="w-full min-h-screen overflow-x-hidden bg-[#0F0F10] text-[#E4E4E7] font-sans antialiased relative pt-8 pb-32 sm:py-12 px-4 md:px-8 selection:bg-amber-500 selection:text-stone-900">
       {/* Background Decorative Gold Ambient Orbs */}
       <div className="absolute top-[-100px] left-[-100px] w-[500px] h-[500px] rounded-full bg-amber-500/5 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-150px] right-[-100px] w-[600px] h-[600px] rounded-full bg-amber-500/5 blur-[150px] pointer-events-none" />
@@ -452,7 +468,10 @@ export default function App() {
 
           {/* Stepper Navigation Actions Section - Desktop Only */}
           {currentStep < 4 && !isConfirming && (
-            <div className="hidden sm:flex mt-4 pt-5 border-t border-stone-800/30 flex-row items-center justify-between gap-3">
+            <div
+              ref={navRef}
+              className="hidden sm:flex mt-4 pt-5 border-t border-stone-800/30 flex-row items-center justify-between gap-3"
+            >
               {/* Back Button */}
               <button
                 onClick={handleBack}
@@ -488,7 +507,7 @@ export default function App() {
 
         {/* Mobile Sticky Bottom Action Bar */}
         {currentStep < 4 && !isConfirming && (
-          <div className="fixed bottom-0 inset-x-0 bg-[#121214]/95 border-t border-stone-850/80 backdrop-blur-lg px-4 pt-3 pb-6 z-40 block sm:hidden">
+          <div className="fixed bottom-0 inset-x-0 bg-[#121214]/95 border-t border-stone-850/80 backdrop-blur-lg px-4 pt-3 pb-6 z-40 flex flex-col sm:hidden">
             {/* Tiny Expandable Summary */}
             <div className="mb-2">
               <button
@@ -626,6 +645,40 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {/* Desktop Scroll-hint Floating Pill — appears when nav buttons are off-screen */}
+        <AnimatePresence>
+          {currentStep < 4 && !isConfirming && !isNavVisible && (
+            <motion.button
+              key="scroll-hint"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 12 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              onClick={() =>
+                navRef.current?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "end",
+                })
+              }
+              className="hidden sm:flex fixed bottom-6 left-1/2 -translate-x-1/2 z-50 items-center gap-2.5 px-5 py-2.5 bg-stone-900/95 border border-amber-500/40 rounded-full backdrop-blur-md shadow-[0_4px_24px_rgba(245,158,11,0.15)] cursor-pointer hover:border-amber-400/70 hover:shadow-[0_4px_32px_rgba(245,158,11,0.25)] transition-all"
+            >
+              <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400 font-bold">
+                Scroll to actions
+              </span>
+              <motion.div
+                animate={{ y: [0, 3, 0] }}
+                transition={{
+                  duration: 1.2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              >
+                <ChevronDown className="w-3.5 h-3.5 text-amber-400" />
+              </motion.div>
+            </motion.button>
+          )}
+        </AnimatePresence>
 
         {/* Mini Trust elements at footer */}
         {currentStep < 4 && (
