@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Barber } from "../types";
 import { TIME_SLOTS, getUnavailableSlots } from "../data/barberData";
 import { ChevronLeft, ChevronRight, Calendar, Clock, Sun, Sunset, Moon, Sparkles } from "lucide-react";
+import { Translate, useLanguage } from "../utils/LanguageContext";
 
 interface DateTimePickerProps {
   selectedDate: string | null; // YYYY-MM-DD
@@ -25,10 +26,31 @@ export function DateTimePicker({
   onSelectDate,
   onSelectTime
 }: DateTimePickerProps) {
+  const { t, language } = useLanguage();
   const today = useMemo(() => new Date(), []);
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth()); // 0-indexed
   const [activeSlotTab, setActiveSlotTab] = useState<"morning" | "afternoon" | "evening">("morning");
+
+  const activeLocale = useMemo(() => {
+    switch (language) {
+      case "KA": return "ka-GE";
+      case "RU": return "ru-RU";
+      default: return "en-US";
+    }
+  }, [language]);
+
+  const weekdaysLocalized = useMemo(() => {
+    return Array.from({ length: 7 }).map((_, i) => {
+      // 2026-05-24 is a Sunday
+      const d = new Date(2026, 4, 24 + i);
+      return d.toLocaleDateString(activeLocale, { weekday: "short" });
+    });
+  }, [activeLocale]);
+
+  const activeMonthName = useMemo(() => {
+    return new Date(currentYear, currentMonth, 1).toLocaleDateString(activeLocale, { month: "long" });
+  }, [currentYear, currentMonth, activeLocale]);
 
   // Keep track of drag offsets for calendar page cues
   const [swipeDirection, setSwipeDirection] = useState<number>(0);
@@ -140,36 +162,36 @@ export function DateTimePicker({
     for (let i = 0; i < 10; i++) {
       const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
       const dayNum = d.getDate();
-      const weekdayStr = WEEKDAYS[d.getDay()]; // e.g. "Sun"
-      const monthStr = MONTHS[d.getMonth()].slice(0, 3); // e.g. "Jan"
+      const weekdayStr = d.toLocaleDateString(activeLocale, { weekday: "short" }); // Dynamic language weekday e.g. "Sun" / "კვი" / "Вс"
+      const monthStr = d.toLocaleDateString(activeLocale, { month: "short" }); // Dynamic Month
       const year = d.getFullYear();
       const month = String(d.getMonth() + 1).padStart(2, "0");
       const dateStr = `${year}-${month}-${String(dayNum).padStart(2, "0")}`;
       days.push({ dayNum, weekdayStr, monthStr, dateStr });
     }
     return days;
-  }, [today]);
+  }, [today, activeLocale]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       <div className="text-center md:text-left space-y-2">
         <h2 className="text-2xl font-light tracking-wide text-stone-100 uppercase">
-          Set <span className="text-amber-400 font-semibold">Date & Time</span>
+          <Translate id="date_title_main" fallback="Set" /> <span className="text-amber-400 font-semibold"><Translate id="date_title_accent" fallback="Date & Time" /></span>
         </h2>
         <p className="text-sm text-stone-400 font-light">
-          Select an available date, then choose a time slot that fits your schedule perfectly.
+          <Translate id="date_subtitle" fallback="Select an available date, then choose a time slot that fits your schedule perfectly." />
         </p>
       </div>
 
       {/* Desktop/Tablet Grid View */}
       <div className="hidden sm:grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Calendar Section (LHS) */}
-        <div className="lg:col-span-7 bg-stone-900/40 border border-stone-850 rounded-2xl p-5 shadow-inner">
+        <div className="lg:col-span-7 bg-stone-900/40 border border-stone-850 rounded-2xl p-5 shadow-inner font-sans">
           <div className="flex items-center justify-between pb-4 mb-4 border-b border-stone-850/65">
             <div className="flex items-center gap-2">
               <Calendar className="w-5 h-5 text-amber-500 animate-pulse" />
-              <span className="text-sm font-semibold text-stone-200 tracking-wide font-sans">
-                {MONTHS[currentMonth]} {currentYear}
+              <span className="text-sm font-semibold text-stone-200 tracking-wide font-sans capitalize">
+                {activeMonthName} {currentYear}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -192,33 +214,19 @@ export function DateTimePicker({
 
           {/* Weekday Labels (Immutable columns) */}
           <div className="grid grid-cols-7 text-center mb-2">
-            {WEEKDAYS.map((day) => (
+            {weekdaysLocalized.map((day) => (
               <span key={day} className="text-[11px] font-mono tracking-wider font-bold text-stone-500 uppercase py-1">
                 {day}
               </span>
             ))}
           </div>
 
-          {/* Swipeable Calendar Day Grid */}
+          {/* Calendar Day Grid */}
           <div className="relative overflow-hidden rounded-xl">
             <motion.div
               key={`${currentMonth}-${currentYear}`}
               custom={swipeDirection}
-              drag="x"
-              dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={0.4}
-              onDragEnd={(e, info) => {
-                // If dragged right beyond threshold, previous month
-                if (info.offset.x > 65) {
-                  handlePrevMonth();
-                } 
-                // If dragged left, next month
-                else if (info.offset.x < -65) {
-                  handleNextMonth();
-                }
-              }}
-              whileTap={{ cursor: "grabbing" }}
-              className="grid grid-cols-7 gap-1 text-center cursor-grab active:cursor-grabbing select-none"
+              className="grid grid-cols-7 gap-1 text-center select-none"
             >
               {calendarCells.map((cell, idx) => {
                 if (!cell.isCurrentMonth) {
@@ -274,20 +282,20 @@ export function DateTimePicker({
             </motion.div>
           </div>
 
-          <p className="text-[10px] text-stone-500 font-mono tracking-wide text-center mt-4">
-            ← Drag horizontally to swipe months →
+          <p className="text-[10px] text-stone-500 font-mono tracking-wide text-center mt-4 uppercase">
+            {t("navigate_months_tip", "Use arrows above to navigate months")}
           </p>
         </div>
 
         {/* Time Slots Section (RHS) */}
-        <div className="lg:col-span-5 h-full flex flex-col">
+        <div className="lg:col-span-5 h-full flex flex-col font-sans">
           {!selectedDate ? (
             <div className="flex-grow flex flex-col items-center justify-center p-8 bg-stone-900/10 border border-dashed border-stone-800 rounded-2xl text-center space-y-3 min-h-[290px]">
               <div className="p-3 bg-stone-900/40 text-stone-600 rounded-full">
                 <Calendar className="w-6 h-6 text-stone-500" />
               </div>
-              <p className="text-xs text-stone-450 font-light">
-                Select a styling date on the left list to pull available craftsman slots.
+              <p className="text-xs text-stone-400 font-light px-4 leading-relaxed">
+                {t("select_styling_date_desc", "Select a styling date to view available time slots.")}
               </p>
             </div>
           ) : (
@@ -295,10 +303,10 @@ export function DateTimePicker({
               <div className="flex items-center gap-2 pb-3 mb-1 border-b border-stone-850/65">
                 <Clock className="w-5 h-5 text-amber-500" />
                 <span className="text-xs font-semibold text-stone-200 tracking-wider uppercase">
-                  Available Slots
+                  {t("available_slots", "Available Slots")}
                 </span>
-                <span className="ml-auto text-[10px] font-mono font-bold bg-amber-500/10 text-amber-400 py-0.5 px-2.5 rounded-lg border border-amber-500/15">
-                  {new Date(selectedDate + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", weekday: "short" })}
+                <span className="ml-auto text-[10px] font-mono font-bold bg-amber-500/10 text-amber-400 py-0.5 px-2.5 rounded-lg border border-amber-500/15 capitalize">
+                  {new Date(selectedDate + "T00:00:00").toLocaleDateString(activeLocale, { month: "short", day: "numeric", weekday: "short" })}
                 </span>
               </div>
 
@@ -308,9 +316,9 @@ export function DateTimePicker({
                   const isActive = activeSlotTab === period;
                   const getTabLabel = () => {
                     switch (period) {
-                      case "morning": return { label: "Morning", icon: <Sun className="w-3.5 h-3.5" /> };
-                      case "afternoon": return { label: "Afternoon", icon: <Sunset className="w-3.5 h-3.5" /> };
-                      case "evening": return { label: "Evening", icon: <Moon className="w-3.5 h-3.5" /> };
+                      case "morning": return { label: t("morning", "Morning"), icon: <Sun className="w-3.5 h-3.5" /> };
+                      case "afternoon": return { label: t("afternoon", "Afternoon"), icon: <Sunset className="w-3.5 h-3.5" /> };
+                      case "evening": return { label: t("evening", "Evening"), icon: <Moon className="w-3.5 h-3.5" /> };
                     }
                   };
                   const opt = getTabLabel();
@@ -349,7 +357,7 @@ export function DateTimePicker({
 
                       return (
                         <motion.button
-                          key={slot}
+                           key={slot}
                           disabled={isUnavailable}
                           whileTap={isUnavailable ? {} : { scale: 0.95 }}
                           onClick={() => onSelectTime(slot)}
@@ -372,7 +380,7 @@ export function DateTimePicker({
               {/* Status cue */}
               <div className="text-[10px] tracking-wide font-mono text-stone-500 uppercase flex items-center justify-center gap-1 bg-[#151517] py-2 rounded-xl border border-stone-850/60 max-w-full">
                 <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
-                <span>Selected: {selectedTime ? `${selectedTime} Slot` : "No hour selected"}</span>
+                <span>{t("selected_label", "Selected")}: {selectedTime ? `${selectedTime} (${t("slot", "Slot")})` : t("no_hour_selected", "No hour selected")}</span>
               </div>
             </div>
           )}
@@ -384,13 +392,12 @@ export function DateTimePicker({
         {/* Horizontal Calendar Weekly Strip */}
         <div className="space-y-2">
           <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-stone-300 uppercase tracking-widest text-left">
-            <Calendar className="w-3.5 h-3.5 text-amber-500" /> Select Styling Date
+            <Calendar className="w-3.5 h-3.5 text-amber-500" /> {t("select_styling_date", "Select Styling Date")}
           </div>
           
-          <div className="flex gap-2.5 overflow-x-auto pb-2 pt-0.5 scrollbar-none snap-x -mx-4 px-4">
+          <div className="flex gap-2.5 overflow-x-auto overflow-y-hidden pb-2 pt-0.5 scrollbar-none snap-x -mx-4 px-4">
             {weeklyStripDays.map((item) => {
               const isSelected = selectedDate === item.dateStr;
-              const dateObj = new Date(item.dateStr + "T00:00:00");
               const isToday = formatDateString(today.getFullYear(), today.getMonth(), today.getDate()) === item.dateStr;
 
               return (
@@ -422,27 +429,27 @@ export function DateTimePicker({
 
         {/* Multi-Period Time Slots Horizontal scrolling lists */}
         {!selectedDate ? (
-          <div className="p-6 bg-stone-900/10 border border-dashed border-stone-850 rounded-xl text-center space-y-2">
+          <div className="p-6 bg-stone-900/10 border border-dashed border-stone-850 rounded-xl text-center space-y-2 font-sans">
             <Calendar className="w-5 h-5 text-stone-605 mx-auto text-stone-600" />
-            <p className="text-[11px] text-stone-500">Pick an available styling date above to see appointment slots.</p>
+            <p className="text-[11px] text-stone-500">{t("select_styling_date_desc", "Select a styling date to view available time slots.")}</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between pb-1 Border-b border-stone-900">
+          <div className="space-y-4 font-sans">
+            <div className="flex items-center justify-between pb-1 border-b border-stone-900">
               <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-stone-300 uppercase tracking-widest text-left">
-                <Clock className="w-3.5 h-3.5 text-amber-500" /> Choose Arrival Time
+                <Clock className="w-3.5 h-3.5 text-amber-500" /> {t("choose_arrival_time", "Choose Arrival Time")}
               </div>
-              <span className="text-[9px] font-mono bg-amber-500/10 border border-amber-500/15 text-amber-400 py-0.5 px-2 rounded-lg">
-                {new Date(selectedDate + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", weekday: "short" })}
+              <span className="text-[9px] font-mono bg-amber-500/10 border border-amber-500/15 text-amber-400 py-0.5 px-2 rounded-lg capitalize">
+                {new Date(selectedDate + "T00:00:00").toLocaleDateString(activeLocale, { month: "short", day: "numeric", weekday: "short" })}
               </span>
             </div>
 
             {/* Morning Section */}
             <div className="space-y-1 text-left">
               <div className="flex items-center gap-1 text-[10px] font-mono font-bold text-stone-450 uppercase tracking-wider">
-                <Sun className="w-3 h-3 text-amber-500" /> Morning Slots
+                <Sun className="w-3 h-3 text-amber-500" /> {t("morning_slots", "Morning Slots")}
               </div>
-              <div className="flex gap-2 overflow-x-auto pb-2 pt-0.5 scrollbar-none -mx-4 px-4">
+              <div className="flex gap-2 overflow-x-auto overflow-y-hidden pb-2 pt-0.5 scrollbar-none -mx-4 px-4">
                 {TIME_SLOTS.morning.map((slot) => {
                   const isUnavailable = unavailableSlots.includes(slot);
                   const isSelected = selectedTime === slot;
@@ -469,9 +476,9 @@ export function DateTimePicker({
             {/* Afternoon Section */}
             <div className="space-y-1 text-left">
               <div className="flex items-center gap-1 text-[10px] font-mono font-bold text-stone-450 uppercase tracking-wider">
-                <Sunset className="w-3 h-3 text-amber-500" /> Afternoon Slots
+                <Sunset className="w-3 h-3 text-amber-500" /> {t("afternoon_slots", "Afternoon Slots")}
               </div>
-              <div className="flex gap-2 overflow-x-auto pb-2 pt-0.5 scrollbar-none -mx-4 px-4">
+              <div className="flex gap-2 overflow-x-auto overflow-y-hidden pb-2 pt-0.5 scrollbar-none -mx-4 px-4">
                 {TIME_SLOTS.afternoon.map((slot) => {
                   const isUnavailable = unavailableSlots.includes(slot);
                   const isSelected = selectedTime === slot;
@@ -498,9 +505,9 @@ export function DateTimePicker({
             {/* Evening Section */}
             <div className="space-y-1 text-left">
               <div className="flex items-center gap-1 text-[10px] font-mono font-bold text-stone-450 uppercase tracking-wider">
-                <Moon className="w-3 h-3 text-amber-500" /> Evening Slots
+                <Moon className="w-3 h-3 text-amber-500" /> {t("evening_slots", "Evening Slots")}
               </div>
-              <div className="flex gap-2 overflow-x-auto pb-2 pt-0.5 scrollbar-none -mx-4 px-4">
+              <div className="flex gap-2 overflow-x-auto overflow-y-hidden pb-2 pt-0.5 scrollbar-none -mx-4 px-4">
                 {TIME_SLOTS.evening.map((slot) => {
                   const isUnavailable = unavailableSlots.includes(slot);
                   const isSelected = selectedTime === slot;

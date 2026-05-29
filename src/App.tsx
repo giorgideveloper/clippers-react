@@ -7,7 +7,17 @@ import { DateTimePicker } from "./components/DateTimePicker";
 import { CustomerInfoReview } from "./components/CustomerInfoReview";
 import { SuccessView } from "./components/SuccessView";
 import { Stepper } from "./components/Stepper";
-import { Scissors, Clock, UserCheck, CalendarDays, MapPin, Sparkles, ChevronRight, ChevronLeft, Lock } from "lucide-react";
+import {
+  Scissors,
+  Clock,
+  UserCheck,
+  CalendarDays,
+  MapPin,
+  Sparkles,
+  ChevronRight,
+  ChevronLeft,
+  Lock,
+} from "lucide-react";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { Translate, useLanguage } from "./utils/LanguageContext";
 import {
@@ -16,7 +26,7 @@ import {
   loadBarbers,
   saveBarbers,
   loadServices,
-  saveServices
+  saveServices,
 } from "./utils/storage";
 import { AdminDashboard } from "./components/admin/AdminDashboard";
 
@@ -30,7 +40,8 @@ export default function App() {
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [direction, setDirection] = useState<number>(1); // 1 = forward, -1 = backward
   const [isConfirming, setIsConfirming] = useState<boolean>(false);
-  const [isMobileSummaryExpanded, setIsMobileSummaryExpanded] = useState<boolean>(false);
+  const [isMobileSummaryExpanded, setIsMobileSummaryExpanded] =
+    useState<boolean>(false);
 
   const [bookingState, setBookingState] = useState<BookingState>({
     service: null,
@@ -41,11 +52,20 @@ export default function App() {
       name: "",
       phone: "",
       email: "",
-      notes: ""
-    }
+      notes: "",
+    },
   });
 
-  const [inputErrors, setInputErrors] = useState<{ name?: string; phone?: string; email?: string }>({});
+  const [inputErrors, setInputErrors] = useState<{
+    name?: string;
+    phone?: string;
+    email?: string;
+  }>({});
+
+  // Automatically scroll to top of window when current page/step changes
+  React.useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentStep]);
 
   // Reset reservation flow
   const handleReset = () => {
@@ -54,7 +74,7 @@ export default function App() {
       barber: null,
       date: null,
       time: null,
-      customer: { name: "", phone: "", email: "", notes: "" }
+      customer: { name: "", phone: "", email: "", notes: "" },
     });
     setInputErrors({});
     setCurrentStep(0);
@@ -62,29 +82,29 @@ export default function App() {
   };
 
   const handleSelectService = (service: any) => {
-    setBookingState(prev => ({ ...prev, service }));
+    setBookingState((prev) => ({ ...prev, service }));
   };
 
   const handleSelectBarber = (barber: any) => {
-    setBookingState(prev => ({ ...prev, barber }));
+    setBookingState((prev) => ({ ...prev, barber }));
   };
 
   const handleSelectDate = (date: string) => {
-    setBookingState(prev => ({ ...prev, date }));
+    setBookingState((prev) => ({ ...prev, date }));
   };
 
   const handleSelectTime = (time: string) => {
-    setBookingState(prev => ({ ...prev, time }));
+    setBookingState((prev) => ({ ...prev, time }));
   };
 
   const handleChangeCustomerInfo = (field: string, value: string) => {
-    setBookingState(prev => ({
+    setBookingState((prev) => ({
       ...prev,
-      customer: { ...prev.customer, [field]: value }
+      customer: { ...prev.customer, [field]: value },
     }));
     // Clear field-specific error as they type
     if (inputErrors[field as keyof typeof inputErrors]) {
-      setInputErrors(prev => ({ ...prev, [field]: undefined }));
+      setInputErrors((prev) => ({ ...prev, [field]: undefined }));
     }
   };
 
@@ -98,7 +118,11 @@ export default function App() {
       case 2:
         return bookingState.date !== null && bookingState.time !== null;
       case 3:
-        return !!bookingState.customer.name && !!bookingState.customer.phone && !!bookingState.customer.email;
+        return (
+          !!bookingState.customer.name &&
+          !!bookingState.customer.phone &&
+          !!bookingState.customer.email
+        );
       default:
         return false;
     }
@@ -144,7 +168,7 @@ export default function App() {
           time: bookingState.time!,
           customer: bookingState.customer,
           status: "pending",
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
         };
         const nextList = [newB, ...bookings];
         setBookings(nextList);
@@ -153,7 +177,7 @@ export default function App() {
     } else {
       if (isStepValid(currentStep)) {
         setDirection(1);
-        setCurrentStep(prev => prev + 1);
+        setCurrentStep((prev) => prev + 1);
       }
     }
   };
@@ -161,37 +185,56 @@ export default function App() {
   const handleBack = () => {
     if (currentStep > 0) {
       setDirection(-1);
-      setCurrentStep(prev => prev - 1);
+      setCurrentStep((prev) => prev - 1);
     }
   };
 
   // State operations handlers
-  const handleUpdateBookingStatus = (bookingId: string, status: Booking["status"]) => {
-    const updated = bookings.map(b => b.id === bookingId ? { ...b, status } : b);
+  const handleUpdateBookingStatus = (
+    bookingId: string,
+    status: Booking["status"],
+  ) => {
+    const updated = bookings.map((b) =>
+      b.id === bookingId ? { ...b, status } : b,
+    );
     setBookings(updated);
     saveBookings(updated);
   };
 
-  const handleRescheduleBooking = (bookingId: string, date: string, time: string) => {
-    const updated = bookings.map(b => b.id === bookingId ? { ...b, date, time } : b);
+  const handleRescheduleBooking = (
+    bookingId: string,
+    date: string,
+    time: string,
+  ) => {
+    const updated = bookings.map((b) =>
+      b.id === bookingId ? { ...b, date, time } : b,
+    );
     setBookings(updated);
     saveBookings(updated);
   };
 
   const handleUpdateBarberStatus = (barberId: string, status: BarberStatus) => {
-    const updated = barbers.map(b => b.id === barberId ? { ...b, status, isAvailable: status === "active" } : b);
+    const updated = barbers.map((b) =>
+      b.id === barberId
+        ? { ...b, status, isAvailable: status === "active" }
+        : b,
+    );
     setBarbers(updated);
     saveBarbers(updated);
   };
 
-  const handleAddBarber = (newBarber: { name: string; specialty: string; avatarUrl: string }) => {
+  const handleAddBarber = (newBarber: {
+    name: string;
+    specialty: string;
+    avatarUrl: string;
+  }) => {
     const barberWithId: Barber = {
       ...newBarber,
       id: "barber-" + Date.now(),
       rating: 5.0,
       reviewsCount: 1,
       isAvailable: true,
-      status: "active"
+      status: "active",
     };
     const updated = [...barbers, barberWithId];
     setBarbers(updated);
@@ -199,7 +242,9 @@ export default function App() {
   };
 
   const handleUpdateService = (updatedService: Service) => {
-    const updated = services.map(s => s.id === updatedService.id ? updatedService : s);
+    const updated = services.map((s) =>
+      s.id === updatedService.id ? updatedService : s,
+    );
     setServices(updated);
     saveServices(updated);
   };
@@ -252,10 +297,7 @@ export default function App() {
         );
       case 4:
         return (
-          <SuccessView
-            bookingState={bookingState}
-            onReset={handleReset}
-          />
+          <SuccessView bookingState={bookingState} onReset={handleReset} />
         );
       default:
         return null;
@@ -280,22 +322,22 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0F0F10] text-[#E4E4E7] font-sans antialiased relative overflow-x-hidden pt-8 pb-32 sm:py-12 px-4 md:px-8 selection:bg-amber-500 selection:text-stone-900">
-      
+    <div className="min-h-screen bg-[#0F0F10] text-[#E4E4E7] font-sans antialiased relative pt-8 pb-32 sm:py-12 px-4 md:px-8 selection:bg-amber-500 selection:text-stone-900">
       {/* Background Decorative Gold Ambient Orbs */}
       <div className="absolute top-[-100px] left-[-100px] w-[500px] h-[500px] rounded-full bg-amber-500/5 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-150px] right-[-100px] w-[600px] h-[600px] rounded-full bg-amber-500/5 blur-[150px] pointer-events-none" />
 
       <div className="max-w-4xl mx-auto space-y-8 relative z-10">
-        
         {/* Salon Branding Header - Highly elegant */}
         <header className="text-center space-y-3 relative">
-          
           {/* Quick interactive switcher */}
           <div className="flex flex-row items-center justify-between gap-3 max-w-xl mx-auto border-b border-stone-850/30 pb-3 mb-2 px-1">
             <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 bg-stone-900 border border-amber-500/20 rounded-full font-mono text-[10px] uppercase tracking-widest text-amber-550">
               <Sparkles className="w-3 h-3 text-amber-400" />
-              <Translate id="exquisite_grooming" fallback="Exquisite Male Grooming" />
+              <Translate
+                id="exquisite_grooming"
+                fallback="Exquisite Male Grooming"
+              />
             </div>
 
             <div className="flex items-center gap-2.5 ml-auto sm:ml-0">
@@ -305,26 +347,29 @@ export default function App() {
                 onClick={() => setIsAdmin(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] uppercase font-mono tracking-wider font-bold bg-stone-900 border border-stone-800 text-stone-300 hover:text-amber-400 hover:border-amber-500/30 rounded-xl cursor-pointer transition-colors"
               >
-                <Lock className="w-3.5 h-3.5 text-amber-500" /> <Translate id="access_owner" fallback="Access Owner Panel" />
+                <Lock className="w-3.5 h-3.5 text-amber-500" />{" "}
+                <Translate id="access_owner" fallback="Access Owner Panel" />
               </button>
             </div>
           </div>
-          
+
           <h1 className="text-3xl md:text-5xl font-extralight tracking-widest uppercase text-stone-100 flex items-center justify-center gap-2">
             <Translate id="brand_name" fallback="SOVEREIGN" />
             <span className="font-serif italic font-medium text-amber-400">
               <Translate id="brand_suffix" fallback="Club" />
             </span>
           </h1>
-          
+
           <p className="text-xs text-stone-500 tracking-wider font-mono">
-            <Translate id="shop_address" fallback="72 Regent Imperial Blvd, New York • Open Daily 09:00 AM - 08:00 PM" />
+            <Translate
+              id="shop_address"
+              fallback="72 Regent Imperial Blvd, New York • Open Daily 09:00 AM - 08:00 PM"
+            />
           </p>
         </header>
 
         {/* Wizard Panel */}
         <div className="bg-[#141416]/90 border border-stone-850 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
-          
           {/* Subtle Golden Thread Line across the panel */}
           <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-amber-400/55 to-transparent shadow-[0_1px_5px_rgba(245,158,11,0.2)]" />
 
@@ -375,10 +420,39 @@ export default function App() {
             </AnimatePresence>
           </div>
 
+          {/* Scroll-to-Action Hint Strip — Desktop */}
+          {currentStep < 4 && !isConfirming && (
+            <div className="hidden sm:flex items-center gap-4 mt-6 mb-1">
+              <div className="flex-1 h-px bg-linear-to-r from-transparent via-stone-700/50 to-amber-500/30" />
+              <div className="flex items-end gap-0.75 h-3.5">
+                <span
+                  className="w-0.75 rounded-full bg-amber-500/35 animate-bounce [animation-delay:0ms]"
+                  style={{ height: "6px" }}
+                />
+                <span
+                  className="w-0.75 rounded-full bg-amber-500/60 animate-bounce [animation-delay:80ms]"
+                  style={{ height: "12px" }}
+                />
+                <span
+                  className="w-0.75 rounded-full bg-amber-500/80 animate-bounce [animation-delay:160ms]"
+                  style={{ height: "8px" }}
+                />
+                <span
+                  className="w-0.75 rounded-full bg-amber-500/60 animate-bounce [animation-delay:240ms]"
+                  style={{ height: "12px" }}
+                />
+                <span
+                  className="w-0.75 rounded-full bg-amber-500/35 animate-bounce [animation-delay:320ms]"
+                  style={{ height: "6px" }}
+                />
+              </div>
+              <div className="flex-1 h-px bg-linear-to-l from-transparent via-stone-700/50 to-amber-500/30" />
+            </div>
+          )}
+
           {/* Stepper Navigation Actions Section - Desktop Only */}
           {currentStep < 4 && !isConfirming && (
-            <div className="hidden sm:flex mt-8 pt-6 border-t border-stone-850/65 flex-row items-center justify-between gap-3">
-              
+            <div className="hidden sm:flex mt-4 pt-5 border-t border-stone-800/30 flex-row items-center justify-between gap-3">
               {/* Back Button */}
               <button
                 onClick={handleBack}
@@ -403,44 +477,58 @@ export default function App() {
                     : "bg-stone-900 border border-stone-850 text-stone-600 cursor-not-allowed select-none"
                 }`}
               >
-                {currentStep === 3 ? t("btn_confirm_reservation", "Confirm Reservation") : t("btn_continue", "Continue Progress")}
+                {currentStep === 3
+                  ? t("btn_confirm_reservation", "Confirm Reservation")
+                  : t("btn_continue", "Continue Progress")}
                 <ChevronRight className="w-4 h-4 ml-2" />
               </button>
-              
             </div>
           )}
-
         </div>
 
         {/* Mobile Sticky Bottom Action Bar */}
         {currentStep < 4 && !isConfirming && (
           <div className="fixed bottom-0 inset-x-0 bg-[#121214]/95 border-t border-stone-850/80 backdrop-blur-lg px-4 pt-3 pb-6 z-40 block sm:hidden">
-            
             {/* Tiny Expandable Summary */}
             <div className="mb-2">
               <button
-                onClick={() => setIsMobileSummaryExpanded(prev => !prev)}
+                onClick={() => setIsMobileSummaryExpanded((prev) => !prev)}
                 className="w-full flex items-center justify-between text-[11px] font-mono tracking-wide text-stone-400 py-1.5 px-3 bg-stone-900 border border-stone-850 rounded-lg select-none"
               >
                 <div className="flex items-center gap-1.5 truncate">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />
                   <span className="font-semibold text-stone-200">
-                    {bookingState.service ? t("service_" + bookingState.service.id + "_name", bookingState.service.name) : t("step_0", "Choose Service")}
+                    {bookingState.service
+                      ? t(
+                          "service_" + bookingState.service.id + "_name",
+                          bookingState.service.name,
+                        )
+                      : t("step_0", "Choose Service")}
                   </span>
                   {bookingState.barber && (
                     <>
                       <span className="text-stone-600">|</span>
-                      <span className="truncate">Barber: {t("barber_" + bookingState.barber.id + "_name", bookingState.barber.name)}</span>
+                      <span className="truncate">
+                        Barber:{" "}
+                        {t(
+                          "barber_" + bookingState.barber.id + "_name",
+                          bookingState.barber.name,
+                        )}
+                      </span>
                     </>
                   )}
                   {bookingState.date && bookingState.time && (
                     <>
                       <span className="text-stone-600">|</span>
-                      <span className="text-amber-400 font-mono font-bold">{bookingState.time}</span>
+                      <span className="text-amber-400 font-mono font-bold">
+                        {bookingState.time}
+                      </span>
                     </>
                   )}
                 </div>
-                <ChevronRight className={`w-3.5 h-3.5 text-stone-500 transition-transform duration-200 ${isMobileSummaryExpanded ? "rotate-90 text-amber-400" : ""}`} />
+                <ChevronRight
+                  className={`w-3.5 h-3.5 text-stone-500 transition-transform duration-200 ${isMobileSummaryExpanded ? "rotate-90 text-amber-400" : ""}`}
+                />
               </button>
 
               {/* Expandable selection table snippet */}
@@ -453,22 +541,51 @@ export default function App() {
                     className="overflow-hidden mt-2 bg-stone-900 border border-stone-850 rounded-xl p-3 text-left space-y-2"
                   >
                     <h4 className="text-[9px] font-mono uppercase font-bold text-amber-405 text-amber-400 tracking-wider">
-                      <Translate id="treatment_details_title" fallback="Your Treatment Details" />
+                      <Translate
+                        id="treatment_details_title"
+                        fallback="Your Treatment Details"
+                      />
                     </h4>
                     <div className="grid grid-cols-2 gap-2 text-[10px]">
                       <div className="bg-stone-950/40 p-2 rounded-lg border border-stone-850/40 col-span-2">
-                        <span className="block text-stone-500 uppercase text-[8px] font-mono font-bold mb-0.5"><Translate id="exp_style" fallback="Experience Style" /></span>
-                        <span className="font-bold text-stone-200">{bookingState.service ? `${t("service_" + bookingState.service.id + "_name", bookingState.service.name)} ($${bookingState.service.price})` : "Not selected yet"}</span>
+                        <span className="block text-stone-500 uppercase text-[8px] font-mono font-bold mb-0.5">
+                          <Translate
+                            id="exp_style"
+                            fallback="Experience Style"
+                          />
+                        </span>
+                        <span className="font-bold text-stone-200">
+                          {bookingState.service
+                            ? `${t("service_" + bookingState.service.id + "_name", bookingState.service.name)} ($${bookingState.service.price})`
+                            : "Not selected yet"}
+                        </span>
                       </div>
                       <div className="bg-stone-950/40 p-2 rounded-lg border border-stone-850/40">
-                        <span className="block text-stone-500 uppercase text-[8px] font-mono font-bold mb-0.5"><Translate id="master_barber" fallback="Master Barber" /></span>
-                        <span className="font-semibold text-stone-300">{bookingState.barber ? t("barber_" + bookingState.barber.id + "_name", bookingState.barber.name) : "Not selected yet"}</span>
-                      </div>
-                      <div className="bg-stone-950/40 p-2 rounded-lg border border-stone-850/40">
-                        <span className="block text-stone-500 uppercase text-[8px] font-mono font-bold mb-0.5"><Translate id="arrival_time" fallback="Arrival Time" /></span>
+                        <span className="block text-stone-500 uppercase text-[8px] font-mono font-bold mb-0.5">
+                          <Translate
+                            id="master_barber"
+                            fallback="Master Barber"
+                          />
+                        </span>
                         <span className="font-semibold text-stone-300">
-                          {bookingState.date && bookingState.time 
-                            ? `${bookingState.time}` 
+                          {bookingState.barber
+                            ? t(
+                                "barber_" + bookingState.barber.id + "_name",
+                                bookingState.barber.name,
+                              )
+                            : "Not selected yet"}
+                        </span>
+                      </div>
+                      <div className="bg-stone-950/40 p-2 rounded-lg border border-stone-850/40">
+                        <span className="block text-stone-500 uppercase text-[8px] font-mono font-bold mb-0.5">
+                          <Translate
+                            id="arrival_time"
+                            fallback="Arrival Time"
+                          />
+                        </span>
+                        <span className="font-semibold text-stone-300">
+                          {bookingState.date && bookingState.time
+                            ? `${bookingState.time}`
                             : "Not selected yet"}
                         </span>
                       </div>
@@ -499,7 +616,11 @@ export default function App() {
                     : "bg-stone-900 border border-stone-850 text-stone-600 select-none cursor-not-allowed"
                 }`}
               >
-                <span>{currentStep === 3 ? t("btn_confirm_reservation", "Confirm Reservation") : t("btn_continue_short", "Continue")}</span>
+                <span>
+                  {currentStep === 3
+                    ? t("btn_confirm_reservation", "Confirm Reservation")
+                    : t("btn_continue_short", "Continue")}
+                </span>
                 <ChevronRight className="w-4 h-4 ml-1.5" />
               </button>
             </div>
@@ -515,16 +636,25 @@ export default function App() {
                 <Translate id="trust_flexible" fallback="Flexible dates" />
               </span>
               <span className="text-[10px] text-stone-500 font-light">
-                <Translate id="trust_flexible_desc" fallback="Reschedule up to 1 hr before" />
+                <Translate
+                  id="trust_flexible_desc"
+                  fallback="Reschedule up to 1 hr before"
+                />
               </span>
             </div>
             <div className="p-4 bg-stone-900/20 border border-stone-800/40 rounded-xl flex flex-col items-center gap-1">
               <UserCheck className="w-4 h-4 text-amber-500" />
               <span className="text-[10px] font-mono uppercase font-bold text-stone-450">
-                <Translate id="trust_certified" fallback="Certified Craftsmanship" />
+                <Translate
+                  id="trust_certified"
+                  fallback="Certified Craftsmanship"
+                />
               </span>
               <span className="text-[10px] text-stone-500 font-light">
-                <Translate id="trust_certified_desc" fallback="Verified luxury master barbers" />
+                <Translate
+                  id="trust_certified_desc"
+                  fallback="Verified luxury master barbers"
+                />
               </span>
             </div>
             <div className="p-4 bg-stone-900/20 border border-stone-800/40 rounded-xl flex flex-col items-center gap-1">
@@ -533,12 +663,14 @@ export default function App() {
                 <Translate id="trust_swift" fallback="Swift Execution" />
               </span>
               <span className="text-[10px] text-stone-500 font-light">
-                <Translate id="trust_swift_desc" fallback="Punctual appointment starts" />
+                <Translate
+                  id="trust_swift_desc"
+                  fallback="Punctual appointment starts"
+                />
               </span>
             </div>
           </footer>
         )}
-
       </div>
     </div>
   );

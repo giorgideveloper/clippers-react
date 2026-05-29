@@ -327,7 +327,7 @@ export function AdminDashboard({
       </AnimatePresence>
 
       {/* CORE WORKSPACE / VIEW STAGE CONTROLLERS */}
-      <main className="flex-grow p-4.5 md:p-8 space-y-6 max-h-screen overflow-y-auto w-full">
+      <main className="flex-grow p-4.5 md:p-8 space-y-6 md:max-h-screen md:overflow-y-auto w-full">
         {renderActiveTabContent()}
       </main>
 

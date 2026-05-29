@@ -104,7 +104,7 @@ export function ServiceSelection({ selectedService, onSelect, services = SERVICE
       </div>
 
       {/* Category Tabs: Swipeable on Mobile, Wrapped on Desktop */}
-      <div className="w-full overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
+      <div className="w-full overflow-x-auto overflow-y-hidden scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
         <div className="flex gap-2 min-w-max pb-2.5 pt-1">
           {CATEGORIES.map((cat) => {
             const isActive = activeCategory === cat.id;

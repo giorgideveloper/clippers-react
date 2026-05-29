@@ -77,6 +77,7 @@ export function BottomSheet({ isOpen, onClose, title, children }: BottomSheetPro
             <div 
               className="px-6 py-6 overflow-y-auto max-h-[70vh] text-stone-300 text-sm font-light leading-relaxed"
               style={{ touchAction: "pan-y" }}
+              onPointerDownCapture={(e) => e.stopPropagation()}
             >
               {children}
             </div>

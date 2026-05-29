@@ -18,4 +18,3 @@ View your app in AI Studio: https://ai.studio/apps/93bb9fb6-97e0-4c1c-8040-851e4
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
-# clippers-react

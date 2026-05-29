@@ -4,6 +4,7 @@ import { Barber } from "../types";
 import { BARBERS } from "../data/barberData";
 import { Star, ShieldAlert, Sparkles, User, Scissors, Info, Award, ShieldCheck, HelpCircle } from "lucide-react";
 import { BottomSheet } from "./BottomSheet";
+import { Translate, useLanguage } from "../utils/LanguageContext";
 
 interface BarberSelectionProps {
   selectedBarber: Barber | null;
@@ -50,6 +51,7 @@ const BARBER_METADATA_EXT: Record<string, { bio: string; motto: string; signatur
 };
 
 export function BarberSelection({ selectedBarber, onSelect, barbers = BARBERS }: BarberSelectionProps) {
+  const { t } = useLanguage();
   const [activeSheetBarber, setActiveSheetBarber] = useState<Barber | null>(null);
 
   // Filter out completely off-duty barber staff
@@ -134,10 +136,10 @@ export function BarberSelection({ selectedBarber, onSelect, barbers = BARBERS }:
     <div className="space-y-6">
       <div className="text-center md:text-left space-y-2">
         <h2 className="text-2xl font-light tracking-wide text-stone-100 uppercase">
-          Choose Your <span className="text-amber-400 font-semibold">Stylist</span>
+          <Translate id="barbers_title_main" fallback="Choose Your" /> <span className="text-amber-400 font-semibold"><Translate id="barbers_title_accent" fallback="Stylist" /></span>
         </h2>
         <p className="text-sm text-stone-400 font-light">
-          Our team is composed of certified master barbers. Choose your preferred expert.
+          <Translate id="barbers_subtitle" fallback="Our team is composed of certified master barbers. Choose your preferred expert." />
         </p>
       </div>
 
@@ -174,11 +176,11 @@ export function BarberSelection({ selectedBarber, onSelect, barbers = BARBERS }:
               {/* Highlight Badge for Any Available / On Break */}
               {isOnBreak ? (
                 <span className="absolute -top-2.5 right-4 px-3 py-0.5 bg-amber-550/20 border border-amber-500/25 text-amber-500 font-sans text-[10px] font-extrabold tracking-widest uppercase rounded-full shadow-md z-1">
-                  On Break
+                  {t("status_break", "On Break")}
                 </span>
               ) : isAnyBarber ? (
                 <span className="absolute -top-2.5 right-4 px-3 py-0.5 bg-amber-500 text-stone-950 font-sans text-[10px] font-extrabold tracking-widest uppercase rounded-full shadow-md z-1">
-                  Popular & Fast
+                  {t("popular_fast", "Popular & Fast")}
                 </span>
               ) : null}
 
@@ -194,7 +196,7 @@ export function BarberSelection({ selectedBarber, onSelect, barbers = BARBERS }:
                     <h3 className={`font-semibold tracking-wide text-base ${
                       isSelected ? "text-amber-300" : "text-stone-200"
                     }`}>
-                      {barber.name}
+                      {t("barber_" + barber.id + "_name", barber.name)}
                     </h3>
                     
                     {/* Rating Stars */}
@@ -220,13 +222,13 @@ export function BarberSelection({ selectedBarber, onSelect, barbers = BARBERS }:
                 </div>
 
                 <p className="text-xs text-stone-400 font-light leading-relaxed">
-                  {barber.specialty}
+                  {t("barber_" + barber.id + "_specialty", barber.specialty)}
                 </p>
 
                 {/* Micro-Feedback Selected Tag */}
                 {isSelected && (
                   <span className="inline-block px-2.5 py-0.5 bg-amber-550/15 border border-amber-400/30 text-[10px] font-mono text-amber-400 uppercase tracking-widest rounded-md mt-1">
-                    Selected Craftsman
+                    {t("selected_craftsman", "Selected Craftsman")}
                   </span>
                 )}
               </div>
@@ -240,7 +242,7 @@ export function BarberSelection({ selectedBarber, onSelect, barbers = BARBERS }:
         variants={containerVariants}
         initial="hidden"
         animate="show"
-        className="flex sm:hidden overflow-x-auto gap-4 pb-4 px-1 scrollbar-none snap-x snap-mandatory -mx-4 px-4"
+        className="flex sm:hidden overflow-x-auto overflow-y-hidden gap-4 pb-4 px-1 scrollbar-none snap-x snap-mandatory -mx-4 px-4"
       >
         {visibleBarbers.map((barber) => {
           const isSelected = selectedBarber?.id === barber.id;
@@ -268,11 +270,11 @@ export function BarberSelection({ selectedBarber, onSelect, barbers = BARBERS }:
               {/* Highlight Badge for Any Available / On Break */}
               {isOnBreak ? (
                 <span className="absolute -top-2.5 right-4 px-3 py-0.5 bg-amber-550/20 border border-amber-500/25 text-amber-500 font-sans text-[9px] font-extrabold tracking-widest uppercase rounded-full shadow-md z-1">
-                  On Break
+                  {t("status_break", "On Break")}
                 </span>
               ) : isAnyBarber ? (
                 <span className="absolute -top-2.5 right-4 px-3 py-0.5 bg-amber-500 text-stone-950 font-sans text-[9px] font-extrabold tracking-widest uppercase rounded-full shadow-md z-1">
-                  Popular & Fast
+                  {t("popular_fast", "Popular & Fast")}
                 </span>
               ) : null}
 
@@ -282,12 +284,12 @@ export function BarberSelection({ selectedBarber, onSelect, barbers = BARBERS }:
               </div>
 
               {/* Text info */}
-              <div className="flex-grow text-center space-y-1 w-full">
+              <div className="flex-grow text-center space-y-1 w-full font-sans">
                 <div className="flex flex-col items-center justify-center gap-0.5">
                   <h3 className={`font-semibold tracking-wide text-sm ${
                     isSelected ? "text-amber-300" : "text-stone-200"
                   }`}>
-                    {barber.name}
+                    {t("barber_" + barber.id + "_name", barber.name)}
                   </h3>
                   
                   {/* Rating Stars */}
@@ -296,14 +298,14 @@ export function BarberSelection({ selectedBarber, onSelect, barbers = BARBERS }:
                     <span className="text-xs font-mono font-bold text-amber-400">
                       {barber.rating.toFixed(1)}
                     </span>
-                    <span className="text-[10px] text-stone-500">
+                    <span className="text-[10px] text-stone-500 font-mono">
                       ({barber.reviewsCount})
                     </span>
                   </div>
                 </div>
 
                 <p className="text-[11px] text-stone-400 font-light leading-snug truncate max-w-full">
-                  {barber.specialty}
+                  {t("barber_" + barber.id + "_specialty", barber.specialty)}
                 </p>
 
                 <div className="flex items-center justify-center gap-2 pt-2">
@@ -312,13 +314,13 @@ export function BarberSelection({ selectedBarber, onSelect, barbers = BARBERS }:
                     className="px-3 py-1 bg-stone-950 hover:bg-stone-900 border border-stone-850 rounded-lg flex items-center justify-center text-[10px] font-mono tracking-wide text-stone-400 hover:text-amber-400 cursor-pointer active:scale-95 gap-1.5"
                     title="View Bio & Tools"
                   >
-                    <Info className="w-3 h-3 text-amber-500" /> Info
+                    <Info className="w-3 h-3 text-amber-500" /> {t("info", "Info")}
                   </button>
 
                   {/* Micro-Feedback Selected Tag */}
                   {isSelected && (
                     <span className="inline-block px-2 py-0.5 bg-amber-500/15 border border-amber-400/30 text-[9px] font-mono text-amber-400 uppercase tracking-widest rounded-md">
-                      Selected
+                      {t("selected", "Selected")}
                     </span>
                   )}
                 </div>
@@ -332,40 +334,40 @@ export function BarberSelection({ selectedBarber, onSelect, barbers = BARBERS }:
       <BottomSheet
         isOpen={activeSheetBarber !== null}
         onClose={() => setActiveSheetBarber(null)}
-        title={activeSheetBarber ? `Stylist: ${activeSheetBarber.name}` : ""}
+        title={activeSheetBarber ? `${t("stylist", "Stylist")}: ${t("barber_" + activeSheetBarber.id + "_name", activeSheetBarber.name)}` : ""}
       >
         {activeSheetBarber && currentSheetData && (
-          <div className="space-y-6 text-stone-300">
+          <div className="space-y-6 text-stone-300 font-sans">
             <div className="flex items-center gap-4 bg-stone-900/60 p-4 rounded-xl border border-stone-800">
               <div className="w-16 h-16 rounded-full border border-stone-700 bg-stone-950 flex items-center justify-center text-amber-400 text-xl font-bold font-serif">
                 {activeSheetBarber.name.split(" ").map(n => n[0]).join("")}
               </div>
               <div className="space-y-1">
-                <h4 className="font-bold text-stone-250 text-md">{activeSheetBarber.name}</h4>
+                <h4 className="font-bold text-stone-250 text-md">{t("barber_" + activeSheetBarber.id + "_name", activeSheetBarber.name)}</h4>
                 <div className="flex items-center gap-1.5">
                   <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
-                  <span className="text-xs font-mono font-bold text-amber-400">{activeSheetBarber.rating.toFixed(1)} Rating</span>
-                  <span className="text-xs text-stone-500">({activeSheetBarber.reviewsCount} verified reviews)</span>
+                  <span className="text-xs font-mono font-bold text-amber-400">{activeSheetBarber.rating.toFixed(1)} {t("rating_label", "Rating")}</span>
+                  <span className="text-xs text-stone-500">({activeSheetBarber.reviewsCount} {t("reviews_count", "verified reviews")})</span>
                 </div>
               </div>
             </div>
 
             <div className="space-y-2">
-              <h5 className="text-xs font-mono font-bold uppercase tracking-widest text-stone-450">Creative Motto</h5>
+              <h5 className="text-xs font-mono font-bold uppercase tracking-widest text-stone-450">{t("creative_motto", "Creative Motto")}</h5>
               <p className="font-serif italic text-xs leading-relaxed text-stone-400 bg-stone-900/30 p-3.5 rounded-xl border border-stone-850">
                 "{currentSheetData.motto}"
               </p>
             </div>
 
             <div className="space-y-2">
-              <h5 className="text-xs font-mono font-bold uppercase tracking-widest text-stone-450">Biography & Background</h5>
+              <h5 className="text-xs font-mono font-bold uppercase tracking-widest text-stone-450">{t("biography_background", "Biography & Background")}</h5>
               <p className="text-xs text-stone-400 leading-relaxed font-light">
                 {currentSheetData.bio}
               </p>
             </div>
 
             <div className="space-y-3">
-              <h5 className="text-xs font-mono font-bold uppercase tracking-widest text-stone-450">Crafting Tools of Selection</h5>
+              <h5 className="text-xs font-mono font-bold uppercase tracking-widest text-stone-450">{t("crafting_tools", "Crafting Tools of Selection")}</h5>
               <div className="flex flex-wrap gap-1.5">
                 {currentSheetData.tools.map((tool, tIdx) => (
                   <span key={tIdx} className="px-3 py-1 bg-stone-900 border border-stone-850 rounded-full text-[10px] font-mono text-stone-400">
@@ -378,7 +380,7 @@ export function BarberSelection({ selectedBarber, onSelect, barbers = BARBERS }:
             <div className="space-y-2">
               <h5 className="text-xs font-mono font-bold uppercase tracking-widest text-stone-450 flex items-center gap-1">
                 <Award className="w-3.5 h-3.5 text-amber-400" />
-                Accreditations
+                {t("accreditations", "Accreditations")}
               </h5>
               <div className="space-y-1.5">
                 {currentSheetData.achievements.map((ach, aIdx) => (
@@ -398,7 +400,7 @@ export function BarberSelection({ selectedBarber, onSelect, barbers = BARBERS }:
                 }}
                 className="w-full h-12 bg-amber-500 hover:bg-amber-450 text-stone-950 font-bold font-mono text-xs uppercase tracking-widest rounded-xl transition-colors cursor-pointer active:scale-[0.98] shadow-lg shadow-amber-500/10 flex items-center justify-center gap-2"
               >
-                Request This Master Barber
+                {t("request_master_barber", "Request This Master Barber")}
               </button>
             </div>
           </div>
