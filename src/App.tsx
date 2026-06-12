@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { BookingState, Booking, Barber, Service, BarberStatus } from "./types";
 import { ServiceSelection } from "./components/ServiceSelection";
@@ -18,6 +18,7 @@ import {
   ChevronLeft,
   ChevronDown,
   Lock,
+  AlertCircle,
 } from "lucide-react";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { Translate, useLanguage } from "./utils/LanguageContext";
@@ -30,13 +31,48 @@ import {
   saveServices,
 } from "./utils/storage";
 import { AdminDashboard } from "./components/admin/AdminDashboard";
+import {
+  fetchBarbers,
+  fetchServices,
+  createBooking,
+  sendSmsCode,
+} from "./services/api";
+import { SmsModal } from "./components/SmsModal";
 
 export default function App() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [bookings, setBookings] = useState<Booking[]>(() => loadBookings());
   const [barbers, setBarbers] = useState<Barber[]>(() => loadBarbers());
   const [services, setServices] = useState<Service[]>(() => loadServices());
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [showSmsModal, setShowSmsModal] = useState(false);
+  const [smsSubmitting, setSmsSubmitting] = useState(false);
+  const [smsError, setSmsError] = useState<string | null>(null);
+
+  // Fetch barbers from API on mount
+  useEffect(() => {
+    fetchBarbers()
+      .then((apiBarbers) => {
+        setBarbers(apiBarbers);
+        saveBarbers(apiBarbers);
+      })
+      .catch(() => {
+        // Silently fall back to cached / mock data
+      });
+  }, []);
+
+  // Fetch services from API whenever language changes
+  useEffect(() => {
+    fetchServices(language)
+      .then((apiServices) => {
+        setServices(apiServices);
+        saveServices(apiServices);
+      })
+      .catch(() => {
+        // Silently fall back to cached / mock data
+      });
+  }, [language]);
 
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [direction, setDirection] = useState<number>(1); // 1 = forward, -1 = backward
@@ -64,6 +100,7 @@ export default function App() {
     barber: null,
     date: null,
     time: null,
+    timeId: null,
     customer: {
       name: "",
       phone: "",
@@ -90,6 +127,7 @@ export default function App() {
       barber: null,
       date: null,
       time: null,
+      timeId: null,
       customer: { name: "", phone: "", email: "", notes: "" },
     });
     setInputErrors({});
@@ -106,11 +144,15 @@ export default function App() {
   };
 
   const handleSelectDate = (date: string) => {
-    setBookingState((prev) => ({ ...prev, date }));
+    setBookingState((prev) => ({ ...prev, date, time: null, timeId: null }));
   };
 
   const handleSelectTime = (time: string) => {
     setBookingState((prev) => ({ ...prev, time }));
+  };
+
+  const handleSelectTimeId = (timeId: number) => {
+    setBookingState((prev) => ({ ...prev, timeId }));
   };
 
   const handleChangeCustomerInfo = (field: string, value: string) => {
@@ -169,15 +211,50 @@ export default function App() {
         return;
       }
 
-      // Trigger luxurious Barber Pole loading transition
+      // Step 1: Send SMS verification code
       setIsConfirming(true);
-      setTimeout(() => {
-        setIsConfirming(false);
-        setCurrentStep(4); // Success step
+      setApiError(null);
+      setSmsError(null);
 
-        // Save new booking directly into our synchronizing local DB
+      sendSmsCode(bookingState.customer.phone)
+        .then(() => {
+          setIsConfirming(false);
+          setShowSmsModal(true);
+        })
+        .catch(() => {
+          setIsConfirming(false);
+          setApiError("Failed to send SMS code. Please check your phone number and try again.");
+        });
+    } else {
+      if (isStepValid(currentStep)) {
+        setDirection(1);
+        setCurrentStep((prev) => prev + 1);
+      }
+    }
+  };
+
+  // Step 2: User entered SMS code — create the booking
+  const handleSmsSubmit = (code: string) => {
+    setSmsSubmitting(true);
+    setSmsError(null);
+
+    createBooking({
+      barbery: bookingState.barber!.id,
+      service: bookingState.service!.id,
+      date: bookingState.date!,
+      time: bookingState.timeId ?? bookingState.time!,
+      customer_name: bookingState.customer.name,
+      customer_phone: bookingState.customer.phone,
+      message: bookingState.customer.notes || undefined,
+      sms_code: code,
+      created_at: new Date().toISOString(),
+    })
+      .then((apiRes) => {
+        setSmsSubmitting(false);
+        setShowSmsModal(false);
+        setCurrentStep(4);
         const newB: Booking = {
-          id: "b-" + Date.now(),
+          id: apiRes.id ? String(apiRes.id) : "b-" + Date.now(),
           service: bookingState.service!,
           barber: bookingState.barber!,
           date: bookingState.date!,
@@ -189,13 +266,11 @@ export default function App() {
         const nextList = [newB, ...bookings];
         setBookings(nextList);
         saveBookings(nextList);
-      }, 1600);
-    } else {
-      if (isStepValid(currentStep)) {
-        setDirection(1);
-        setCurrentStep((prev) => prev + 1);
-      }
-    }
+      })
+      .catch(() => {
+        setSmsSubmitting(false);
+        setSmsError("Invalid SMS code. Please check and try again.");
+      });
   };
 
   const handleBack = () => {
@@ -301,6 +376,7 @@ export default function App() {
             selectedBarber={bookingState.barber}
             onSelectDate={handleSelectDate}
             onSelectTime={handleSelectTime}
+            onSelectTimeId={handleSelectTimeId}
           />
         );
       case 3:
@@ -339,6 +415,15 @@ export default function App() {
 
   return (
     <div className="w-full min-h-screen overflow-x-hidden bg-[#0F0F10] text-[#E4E4E7] font-sans antialiased relative pt-8 pb-32 sm:py-12 px-4 md:px-8 selection:bg-amber-500 selection:text-stone-900">
+      {/* SMS Verification Modal */}
+      <SmsModal
+        phone={bookingState.customer.phone}
+        isOpen={showSmsModal}
+        isSubmitting={smsSubmitting}
+        error={smsError}
+        onSubmit={handleSmsSubmit}
+        onClose={() => !smsSubmitting && setShowSmsModal(false)}
+      />
       {/* Background Decorative Gold Ambient Orbs */}
       <div className="absolute top-[-100px] left-[-100px] w-[500px] h-[500px] rounded-full bg-amber-500/5 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-150px] right-[-100px] w-[600px] h-[600px] rounded-full bg-amber-500/5 blur-[150px] pointer-events-none" />
@@ -394,6 +479,24 @@ export default function App() {
             <div className="mb-8 pb-8 border-b border-stone-850">
               <Stepper currentStep={currentStep} />
             </div>
+          )}
+
+          {/* API Error Banner */}
+          {apiError && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 flex items-start gap-3 px-4 py-3 rounded-xl bg-red-950/40 border border-red-500/30 text-red-400 text-xs font-mono"
+            >
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-400" />
+              <span>{apiError}</span>
+              <button
+                onClick={() => setApiError(null)}
+                className="ml-auto text-red-500 hover:text-red-300 transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </motion.div>
           )}
 
           {/* Core Content Form Container */}

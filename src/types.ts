@@ -26,6 +26,7 @@ export interface BookingState {
   barber: Barber | null;
   date: string | null; // YYYY-MM-DD
   time: string | null; // e.g., "10:30 AM"
+  timeId: number | null; // working hour ID from /time/ endpoint
   customer: {
     name: string;
     phone: string;

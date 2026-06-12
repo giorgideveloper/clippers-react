@@ -1,9 +1,9 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Barber } from "../types";
-import { TIME_SLOTS, getUnavailableSlots } from "../data/barberData";
-import { ChevronLeft, ChevronRight, Calendar, Clock, Sun, Sunset, Moon, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, Clock, Sun, Sunset, Moon, Sparkles, Loader2 } from "lucide-react";
 import { Translate, useLanguage } from "../utils/LanguageContext";
+import { fetchWorkingHours, fetchBookingTimes, WorkingHourSlot } from "../services/api";
 
 interface DateTimePickerProps {
   selectedDate: string | null; // YYYY-MM-DD
@@ -11,6 +11,7 @@ interface DateTimePickerProps {
   selectedBarber: Barber | null;
   onSelectDate: (dateStr: string) => void;
   onSelectTime: (timeStr: string) => void;
+  onSelectTimeId: (id: number) => void;
 }
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -24,13 +25,35 @@ export function DateTimePicker({
   selectedTime,
   selectedBarber,
   onSelectDate,
-  onSelectTime
+  onSelectTime,
+  onSelectTimeId,
 }: DateTimePickerProps) {
   const { t, language } = useLanguage();
   const today = useMemo(() => new Date(), []);
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth()); // 0-indexed
   const [activeSlotTab, setActiveSlotTab] = useState<"morning" | "afternoon" | "evening">("morning");
+
+  // API-driven availability: null = not yet loaded, [] = none available
+  const [availableSlots, setAvailableSlots] = useState<string[] | null>(null);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Working hours fetched once on mount
+  const [workingHours, setWorkingHours] = useState<WorkingHourSlot[]>([]);
+
+  useEffect(() => {
+    fetchWorkingHours()
+      .then(setWorkingHours)
+      .catch(() => {/* fall back to empty — slots won't show */});
+  }, []);
+
+  // Derive period buckets from working hours
+  const slotsByPeriod = useMemo(() => ({
+    morning:   workingHours.filter((s) => s.period === "morning"),
+    afternoon: workingHours.filter((s) => s.period === "afternoon"),
+    evening:   workingHours.filter((s) => s.period === "evening"),
+  }), [workingHours]);
 
   const activeLocale = useMemo(() => {
     switch (language) {
@@ -92,11 +115,45 @@ export function DateTimePicker({
     }
   };
 
-  // Get dynamic unavailable slots for selected date
-  const unavailableSlots = useMemo(() => {
-    if (!selectedBarber || !selectedDate) return [];
-    return getUnavailableSlots(selectedBarber.id, selectedDate);
-  }, [selectedBarber, selectedDate]);
+  // Fetch BOOKED time slots from API; a slot is unavailable if its rawTime is in this list
+  useEffect(() => {
+    if (!selectedDate || !selectedBarber) {
+      setAvailableSlots(null);
+      return;
+    }
+
+    // Cancel any in-flight request
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setSlotsLoading(true);
+    fetchBookingTimes(selectedDate, selectedBarber.id, controller.signal)
+      .then((bookedRawTimes) => {
+        setAvailableSlots(bookedRawTimes); // these are the BOOKED ones
+        setSlotsLoading(false);
+      })
+      .catch((err) => {
+        if (err?.name === "CanceledError" || err?.name === "AbortError") return;
+        setAvailableSlots(null); // on error show all as available
+        setSlotsLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [selectedDate, selectedBarber]);
+
+  // A slot is unavailable if its rawTime appears in the booked list
+  const isSlotUnavailable = (slot: WorkingHourSlot): boolean => {
+    if (availableSlots === null) return false; // not loaded yet — optimistic
+    return availableSlots.some(
+      (booked) => booked.startsWith(slot.rawTime.slice(0, 5)) // compare HH:MM
+    );
+  };
+
+  const handleSelectSlot = (slot: WorkingHourSlot) => {
+    onSelectTime(slot.display);
+    onSelectTimeId(slot.id);
+  };
 
   // Generate date grid cells
   const calendarCells = useMemo(() => {
@@ -146,15 +203,10 @@ export function DateTimePicker({
   // Detect and set correct active slot tab based on selectedTime (if any)
   React.useEffect(() => {
     if (selectedTime) {
-      if (TIME_SLOTS.morning.includes(selectedTime)) {
-        setActiveSlotTab("morning");
-      } else if (TIME_SLOTS.afternoon.includes(selectedTime)) {
-        setActiveSlotTab("afternoon");
-      } else if (TIME_SLOTS.evening.includes(selectedTime)) {
-        setActiveSlotTab("evening");
-      }
+      const found = workingHours.find((s) => s.display === selectedTime);
+      if (found) setActiveSlotTab(found.period);
     }
-  }, [selectedTime]);
+  }, [selectedTime, workingHours]);
 
   // Generate next 10 days for mobile Weekly Calendar Strip
   const weeklyStripDays = useMemo(() => {
@@ -342,39 +394,45 @@ export function DateTimePicker({
 
               {/* Displayed Slots Grid with Spring Transitions */}
               <div className="min-h-[160px] relative">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={activeSlotTab}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.18 }}
-                    className="grid grid-cols-2 sm:grid-cols-3 gap-2 pb-1"
-                  >
-                    {TIME_SLOTS[activeSlotTab].map((slot) => {
-                      const isUnavailable = unavailableSlots.includes(slot);
-                      const isSelected = selectedTime === slot;
+                {slotsLoading ? (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />
+                  </div>
+                ) : (
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={activeSlotTab}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.18 }}
+                      className="grid grid-cols-2 sm:grid-cols-3 gap-2 pb-1"
+                    >
+                      {slotsByPeriod[activeSlotTab].map((slot) => {
+                        const isUnavailable = isSlotUnavailable(slot);
+                        const isSelected = selectedTime === slot.display;
 
-                      return (
-                        <motion.button
-                           key={slot}
-                          disabled={isUnavailable}
-                          whileTap={isUnavailable ? {} : { scale: 0.95 }}
-                          onClick={() => onSelectTime(slot)}
-                          className={`h-12 w-full rounded-xl flex items-center justify-center font-mono text-[11px] font-semibold tracking-wide border transition-all cursor-pointer ${
-                            isUnavailable
-                              ? "bg-stone-950/20 text-stone-700 border-transparent opacity-20 pointer-events-none line-through"
-                              : isSelected
-                              ? "bg-amber-500 text-stone-950 font-bold border-amber-400 shadow-lg shadow-amber-500/25 scale-102"
-                              : "bg-stone-900/40 border-stone-850 text-stone-300 hover:border-amber-500/35 hover:text-amber-400 hover:bg-stone-850"
-                          }`}
-                        >
-                          {slot}
-                        </motion.button>
-                      );
-                    })}
-                  </motion.div>
-                </AnimatePresence>
+                        return (
+                          <motion.button
+                            key={slot.id}
+                            disabled={isUnavailable}
+                            whileTap={isUnavailable ? {} : { scale: 0.95 }}
+                            onClick={() => handleSelectSlot(slot)}
+                            className={`h-12 w-full rounded-xl flex items-center justify-center font-mono text-[11px] font-semibold tracking-wide border transition-all cursor-pointer ${
+                              isUnavailable
+                                ? "bg-stone-950/20 text-stone-700 border-transparent opacity-20 pointer-events-none line-through"
+                                : isSelected
+                                ? "bg-amber-500 text-stone-950 font-bold border-amber-400 shadow-lg shadow-amber-500/25 scale-102"
+                                : "bg-stone-900/40 border-stone-850 text-stone-300 hover:border-amber-500/35 hover:text-amber-400 hover:bg-stone-850"
+                            }`}
+                          >
+                            {slot.display}
+                          </motion.button>
+                        );
+                      })}
+                    </motion.div>
+                  </AnimatePresence>
+                )}
               </div>
 
               {/* Status cue */}
@@ -450,14 +508,14 @@ export function DateTimePicker({
                 <Sun className="w-3 h-3 text-amber-500" /> {t("morning_slots", "Morning Slots")}
               </div>
               <div className="flex gap-2 overflow-x-auto overflow-y-hidden pb-2 pt-0.5 scrollbar-none -mx-4 px-4">
-                {TIME_SLOTS.morning.map((slot) => {
-                  const isUnavailable = unavailableSlots.includes(slot);
-                  const isSelected = selectedTime === slot;
+                {slotsByPeriod.morning.map((slot) => {
+                  const isUnavailable = isSlotUnavailable(slot);
+                  const isSelected = selectedTime === slot.display;
                   return (
                     <button
-                      key={`mob-mrn-${slot}`}
+                      key={`mob-mrn-${slot.id}`}
                       disabled={isUnavailable}
-                      onClick={() => onSelectTime(slot)}
+                      onClick={() => handleSelectSlot(slot)}
                       className={`py-2 px-4 rounded-xl flex-shrink-0 font-mono text-[11px] font-semibold border transition-all ${
                         isUnavailable
                           ? "bg-stone-950/20 text-stone-700 border-transparent opacity-20 pointer-events-none line-through"
@@ -466,7 +524,7 @@ export function DateTimePicker({
                           : "bg-stone-900/40 border-stone-850 text-stone-300 hover:border-amber-500/30"
                       }`}
                     >
-                      {slot}
+                      {slot.display}
                     </button>
                   );
                 })}
@@ -479,14 +537,14 @@ export function DateTimePicker({
                 <Sunset className="w-3 h-3 text-amber-500" /> {t("afternoon_slots", "Afternoon Slots")}
               </div>
               <div className="flex gap-2 overflow-x-auto overflow-y-hidden pb-2 pt-0.5 scrollbar-none -mx-4 px-4">
-                {TIME_SLOTS.afternoon.map((slot) => {
-                  const isUnavailable = unavailableSlots.includes(slot);
-                  const isSelected = selectedTime === slot;
+                {slotsByPeriod.afternoon.map((slot) => {
+                  const isUnavailable = isSlotUnavailable(slot);
+                  const isSelected = selectedTime === slot.display;
                   return (
                     <button
-                      key={`mob-aft-${slot}`}
+                      key={`mob-aft-${slot.id}`}
                       disabled={isUnavailable}
-                      onClick={() => onSelectTime(slot)}
+                      onClick={() => handleSelectSlot(slot)}
                       className={`py-2 px-4 rounded-xl flex-shrink-0 font-mono text-[11px] font-semibold border transition-all ${
                         isUnavailable
                           ? "bg-stone-950/20 text-stone-700 border-transparent opacity-20 pointer-events-none line-through"
@@ -495,7 +553,7 @@ export function DateTimePicker({
                           : "bg-stone-900/40 border-stone-850 text-stone-300 hover:border-amber-500/30"
                       }`}
                     >
-                      {slot}
+                      {slot.display}
                     </button>
                   );
                 })}
@@ -508,14 +566,14 @@ export function DateTimePicker({
                 <Moon className="w-3 h-3 text-amber-500" /> {t("evening_slots", "Evening Slots")}
               </div>
               <div className="flex gap-2 overflow-x-auto overflow-y-hidden pb-2 pt-0.5 scrollbar-none -mx-4 px-4">
-                {TIME_SLOTS.evening.map((slot) => {
-                  const isUnavailable = unavailableSlots.includes(slot);
-                  const isSelected = selectedTime === slot;
+                {slotsByPeriod.evening.map((slot) => {
+                  const isUnavailable = isSlotUnavailable(slot);
+                  const isSelected = selectedTime === slot.display;
                   return (
                     <button
-                      key={`mob-eve-${slot}`}
+                      key={`mob-eve-${slot.id}`}
                       disabled={isUnavailable}
-                      onClick={() => onSelectTime(slot)}
+                      onClick={() => handleSelectSlot(slot)}
                       className={`py-2 px-4 rounded-xl flex-shrink-0 font-mono text-[11px] font-semibold border transition-all ${
                         isUnavailable
                           ? "bg-stone-950/20 text-stone-700 border-transparent opacity-20 pointer-events-none line-through"
@@ -524,7 +582,7 @@ export function DateTimePicker({
                           : "bg-stone-900/40 border-stone-850 text-stone-300 hover:border-amber-500/30"
                       }`}
                     >
-                      {slot}
+                      {slot.display}
                     </button>
                   );
                 })}
