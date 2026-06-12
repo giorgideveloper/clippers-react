@@ -11,7 +11,14 @@ interface SmsModalProps {
   onClose: () => void;
 }
 
-export function SmsModal({ phone, isOpen, isSubmitting, error, onSubmit, onClose }: SmsModalProps) {
+export function SmsModal({
+  phone,
+  isOpen,
+  isSubmitting,
+  error,
+  onSubmit,
+  onClose,
+}: SmsModalProps) {
   const [digits, setDigits] = useState<string[]>(["", "", "", ""]);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -54,9 +61,10 @@ export function SmsModal({ phone, isOpen, isSubmitting, error, onSubmit, onClose
     if (code.length === 4) onSubmit(code);
   };
 
-  const maskedPhone = phone.length > 4
-    ? phone.slice(0, -4).replace(/\d/g, "•") + phone.slice(-4)
-    : phone;
+  const maskedPhone =
+    phone.length > 4
+      ? phone.slice(0, -4).replace(/\d/g, "•") + phone.slice(-4)
+      : phone;
 
   return (
     <AnimatePresence>
@@ -108,7 +116,9 @@ export function SmsModal({ phone, isOpen, isSubmitting, error, onSubmit, onClose
                   </h3>
                   <p className="text-xs text-stone-400 leading-relaxed">
                     Enter the 4-digit code sent to{" "}
-                    <span className="text-amber-400 font-mono font-semibold">{maskedPhone}</span>
+                    <span className="text-amber-400 font-mono font-semibold">
+                      {maskedPhone}
+                    </span>
                   </p>
                 </div>
 
@@ -117,7 +127,9 @@ export function SmsModal({ phone, isOpen, isSubmitting, error, onSubmit, onClose
                   {digits.map((d, i) => (
                     <input
                       key={i}
-                      ref={(el) => { inputRefs.current[i] = el; }}
+                      ref={(el) => {
+                        inputRefs.current[i] = el;
+                      }}
                       type="text"
                       inputMode="numeric"
                       maxLength={4}
@@ -154,9 +166,10 @@ export function SmsModal({ phone, isOpen, isSubmitting, error, onSubmit, onClose
                   onClick={handleSubmit}
                   disabled={digits.join("").length < 4 || isSubmitting}
                   className={`w-full h-11 rounded-xl font-semibold text-sm tracking-wide transition-all flex items-center justify-center gap-2 cursor-pointer
-                    ${digits.join("").length === 4 && !isSubmitting
-                      ? "bg-amber-500 hover:bg-amber-400 text-stone-950 shadow-lg shadow-amber-500/20"
-                      : "bg-stone-800 text-stone-500 cursor-not-allowed"
+                    ${
+                      digits.join("").length === 4 && !isSubmitting
+                        ? "bg-amber-500 hover:bg-amber-400 text-stone-950 shadow-lg shadow-amber-500/20"
+                        : "bg-stone-800 text-stone-500 cursor-not-allowed"
                     }`}
                 >
                   {isSubmitting ? (

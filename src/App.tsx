@@ -36,6 +36,7 @@ import {
   fetchServices,
   createBooking,
   sendSmsCode,
+  fetchAllBookings,
 } from "./services/api";
 import { SmsModal } from "./components/SmsModal";
 
@@ -73,6 +74,20 @@ export default function App() {
         // Silently fall back to cached / mock data
       });
   }, [language]);
+
+  // Fetch real bookings from API whenever the admin panel is opened
+  useEffect(() => {
+    if (!isAdmin) return;
+    fetchAllBookings(barbers, services)
+      .then((apiBookings) => {
+        setBookings(apiBookings);
+        saveBookings(apiBookings);
+      })
+      .catch(() => {
+        // Silently keep whatever is already in state
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin]);
 
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [direction, setDirection] = useState<number>(1); // 1 = forward, -1 = backward
@@ -223,7 +238,9 @@ export default function App() {
         })
         .catch(() => {
           setIsConfirming(false);
-          setApiError("Failed to send SMS code. Please check your phone number and try again.");
+          setApiError(
+            "Failed to send SMS code. Please check your phone number and try again.",
+          );
         });
     } else {
       if (isStepValid(currentStep)) {
@@ -341,12 +358,25 @@ export default function App() {
   };
 
   const handleResetDatabase = () => {
-    localStorage.removeItem("sov_barber_bookings");
-    localStorage.removeItem("sov_barber_staff");
-    localStorage.removeItem("sov_barber_catalog");
-    setBookings(loadBookings());
-    setBarbers(loadBarbers());
-    setServices(loadServices());
+    // Re-fetch everything fresh from the API
+    fetchAllBookings(barbers, services)
+      .then((apiBookings) => {
+        setBookings(apiBookings);
+        saveBookings(apiBookings);
+      })
+      .catch(() => {});
+    fetchBarbers()
+      .then((b) => {
+        setBarbers(b);
+        saveBarbers(b);
+      })
+      .catch(() => {});
+    fetchServices(language)
+      .then((s) => {
+        setServices(s);
+        saveServices(s);
+      })
+      .catch(() => {});
   };
 
   // Render the corresponding form wizard view

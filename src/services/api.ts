@@ -48,8 +48,8 @@ interface DRFPage<T> {
 // GET /barbery/
 export interface ApiBarber {
   id: number;
-  name: string;           // fallback name field
-  barber_name?: string;   // Georgian
+  name: string; // fallback name field
+  barber_name?: string; // Georgian
   barber_name_ru?: string;
   barber_name_eng?: string;
   image?: string;
@@ -81,13 +81,13 @@ export interface ApiBookedSlot {
 export interface ApiBookingPayload {
   barbery: number | string;
   service: number | string;
-  date: string;           // YYYY-MM-DD
-  time: number | string;  // working hour ID
+  date: string; // YYYY-MM-DD
+  time: number | string; // working hour ID
   customer_name: string;
   customer_phone: string;
   message?: string;
   sms_code?: string;
-  created_at?: string;    // ISO datetime, required by the API
+  created_at?: string; // ISO datetime, required by the API
 }
 
 export interface ApiBookingResponse {
@@ -131,7 +131,10 @@ export function mapApiService(raw: ApiService): Service {
   return {
     id: String(raw.id),
     name: raw.service_name,
-    price: typeof raw.price === "string" ? parseFloat(raw.price) || 0 : (raw.price ?? 0),
+    price:
+      typeof raw.price === "string"
+        ? parseFloat(raw.price) || 0
+        : (raw.price ?? 0),
     duration: raw.duration ?? 30,
     description: raw.description ?? "",
     category: CATEGORY_MAP[raw.category_type] ?? "hair",
@@ -147,7 +150,9 @@ export function formatHourDisplay(time: string): string {
   return `${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
-export function getHourPeriod(time: string): "morning" | "afternoon" | "evening" {
+export function getHourPeriod(
+  time: string,
+): "morning" | "afternoon" | "evening" {
   const h = parseInt(time.split(":")[0], 10);
   if (h < 12) return "morning";
   if (h < 17) return "afternoon";
@@ -156,8 +161,8 @@ export function getHourPeriod(time: string): "morning" | "afternoon" | "evening"
 
 export interface WorkingHourSlot {
   id: number;
-  rawTime: string;   // "09:00:00"
-  display: string;   // "09:00 AM"
+  rawTime: string; // "09:00:00"
+  display: string; // "09:00 AM"
   period: "morning" | "afternoon" | "evening";
 }
 
@@ -173,13 +178,15 @@ export const fetchBarberById = async (id: string): Promise<Barber> => {
   return mapApiBarber(res.data, 0);
 };
 
-export const fetchServices = async (language: LanguageCode): Promise<Service[]> => {
+export const fetchServices = async (
+  language: LanguageCode,
+): Promise<Service[]> => {
   const endpoint =
     language === "RU"
       ? "/services-ru/"
       : language === "EN"
-      ? "/services-eng/"
-      : "/services/";
+        ? "/services-eng/"
+        : "/services/";
   const res = await client.get<DRFPage<ApiService>>(endpoint);
   return res.data.results.map(mapApiService);
 };
@@ -197,12 +204,12 @@ export const fetchWorkingHours = async (): Promise<WorkingHourSlot[]> => {
 export const fetchBookingTimes = async (
   date: string,
   barberId: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<string[]> => {
   // Returns already-BOOKED raw time strings ("HH:MM:SS") for the given date + barber
   const res = await client.get<DRFPage<ApiBookedSlot>>(
     `/booking-times/?date=${date}&barbery=${barberId}`,
-    { signal }
+    { signal },
   );
   return res.data.results.map((s) => s.time_for_booking);
 };
@@ -212,26 +219,132 @@ export const sendSmsCode = async (mobile: string): Promise<void> => {
 };
 
 export const createBooking = async (
-  payload: ApiBookingPayload
+  payload: ApiBookingPayload,
 ): Promise<ApiBookingResponse> => {
-  const res = await client.post<ApiBookingResponse>("/bookings/create/", payload);
+  const res = await client.post<ApiBookingResponse>(
+    "/bookings/create/",
+    payload,
+  );
   return res.data;
 };
 
 export const createBarberBooking = async (
   payload: ApiBookingPayload,
-  csrf?: string
+  csrf?: string,
 ): Promise<ApiBookingResponse> => {
   const res = await client.post<ApiBookingResponse>(
     "/bookings/create/barber/",
-    payload
+    payload,
   );
   return res.data;
 };
 
-export const fetchAllBookings = async () => {
-  const res = await client.get("/bookings/");
-  return res.data;
+// GET /bookings/ — raw record from the API
+export interface ApiBookingRecord {
+  id: number;
+  date: string; // YYYY-MM-DD
+  time?: number | string | { id: number; time: string };
+  customer_name?: string;
+  customer_phone?: string;
+  message?: string;
+  barbery?: number | ApiBarber;
+  service?: number | ApiService | (number | ApiService)[];
+  status?: string;
+  created_at?: string;
+}
+
+function resolveServiceObj(
+  raw: number | ApiService | (number | ApiService)[] | undefined,
+  allServices: import("../types").Service[],
+): import("../types").Service {
+  const FALLBACK: import("../types").Service = {
+    id: "unknown",
+    name: "Service",
+    price: 0,
+    duration: 30,
+    description: "",
+    category: "hair",
+    icon: "Scissors",
+  };
+  if (!raw) return FALLBACK;
+  // Array — take first element
+  const item = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof item === "object" && item !== null)
+    return mapApiService(item as ApiService);
+  if (typeof item === "number")
+    return allServices.find((s) => s.id === String(item)) ?? FALLBACK;
+  return FALLBACK;
+}
+
+function resolveBarberObj(
+  raw: number | ApiBarber | undefined,
+  allBarbers: import("../types").Barber[],
+  index: number,
+): import("../types").Barber {
+  const FALLBACK: import("../types").Barber = {
+    id: "unknown",
+    name: "Barber",
+    specialty: "",
+    rating: 5,
+    reviewsCount: 0,
+    avatarUrl: "bg-stone-900 text-stone-400 border-stone-500/30",
+    isAvailable: true,
+  };
+  if (!raw) return FALLBACK;
+  if (typeof raw === "object") return mapApiBarber(raw as ApiBarber, index);
+  if (typeof raw === "number")
+    return allBarbers.find((b) => b.id === String(raw)) ?? FALLBACK;
+  return FALLBACK;
+}
+
+function resolveTimeDisplay(
+  raw: number | string | { id: number; time: string } | undefined,
+): string {
+  if (!raw) return "";
+  if (typeof raw === "object" && "time" in raw)
+    return formatHourDisplay(raw.time);
+  if (typeof raw === "string" && raw.includes(":"))
+    return formatHourDisplay(raw);
+  return String(raw);
+}
+
+export function mapApiBooking(
+  raw: ApiBookingRecord,
+  allBarbers: import("../types").Barber[],
+  allServices: import("../types").Service[],
+  index = 0,
+): import("../types").Booking {
+  const STATUS_MAP: Record<string, import("../types").BookingStatus> = {
+    pending: "pending",
+    confirmed: "confirmed",
+    completed: "completed",
+    cancelled: "cancelled",
+  };
+  return {
+    id: String(raw.id),
+    service: resolveServiceObj(raw.service, allServices),
+    barber: resolveBarberObj(raw.barbery, allBarbers, index),
+    date: raw.date,
+    time: resolveTimeDisplay(raw.time),
+    customer: {
+      name: raw.customer_name ?? "",
+      phone: raw.customer_phone ?? "",
+      email: "",
+      notes: raw.message ?? "",
+    },
+    status: STATUS_MAP[raw.status ?? ""] ?? "pending",
+    createdAt: raw.created_at ?? new Date().toISOString(),
+  };
+}
+
+export const fetchAllBookings = async (
+  allBarbers: import("../types").Barber[],
+  allServices: import("../types").Service[],
+): Promise<import("../types").Booking[]> => {
+  const res = await client.get<DRFPage<ApiBookingRecord>>("/bookings/");
+  return res.data.results.map((r, i) =>
+    mapApiBooking(r, allBarbers, allServices, i),
+  );
 };
 
 export const fetchBookingById = async (id: string) => {
@@ -242,12 +355,15 @@ export const fetchBookingById = async (id: string) => {
 export const updateBooking = async (
   id: string,
   data: unknown,
-  csrf?: string
+  csrf?: string,
 ) => {
   const res = await client.put(`/bookings/${id}`, data);
   return res.data;
 };
 
-export const deleteBooking = async (id: string, csrf?: string): Promise<void> => {
+export const deleteBooking = async (
+  id: string,
+  csrf?: string,
+): Promise<void> => {
   await client.delete(`/bookings/${id}`);
 };

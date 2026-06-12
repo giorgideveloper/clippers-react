@@ -52,4 +52,3 @@ export interface Booking {
   status: BookingStatus;
   createdAt: string;
 }
-
