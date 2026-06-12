@@ -2,9 +2,11 @@ import axios, { AxiosInstance } from "axios";
 import { Barber, Service } from "../types";
 import { LanguageCode } from "../utils/LanguageContext";
 
-// Use a relative path so the Vite dev proxy handles CORS in development,
-// and the request hits the same origin when deployed on theclippers.ge.
-const BASE_URL = "/booking";
+// In dev the Vite proxy rewrites /booking → https://theclippers.ge/booking.
+// In production (Vercel) there is no proxy, so we must use the full URL.
+const BASE_URL = import.meta.env.DEV
+  ? "/booking"
+  : "https://theclippers.ge/booking";
 
 const client: AxiosInstance = axios.create({
   baseURL: BASE_URL,
