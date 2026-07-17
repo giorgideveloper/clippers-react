@@ -18,7 +18,7 @@ interface RefreshResponse {
 const authClient = axios.create({
   baseURL: AUTH_BASE_URL,
   timeout: 12_000,
-  withCredentials: true,
+  withCredentials: false,
 });
 
 function decodeJwtPayload(token: string): { exp?: number } | null {
@@ -26,7 +26,9 @@ function decodeJwtPayload(token: string): { exp?: number } | null {
     const [, payload] = token.split(".");
     if (!payload) return null;
     const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
-    const decoded = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "="));
+    const decoded = atob(
+      normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "="),
+    );
     return JSON.parse(decoded);
   } catch {
     return null;

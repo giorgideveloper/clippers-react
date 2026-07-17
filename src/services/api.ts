@@ -11,7 +11,7 @@ const BASE_URL = import.meta.env.DEV
 const client: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   timeout: 12_000,
-  withCredentials: true,
+  withCredentials: false,
 });
 
 // Fetch CSRF once and attach to every mutating request automatically
