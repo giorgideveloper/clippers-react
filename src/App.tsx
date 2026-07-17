@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useTransition } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { BookingState, Booking, Barber, Service, BarberStatus } from "./types";
@@ -148,14 +148,28 @@ export default function App() {
 
   const navRef = useRef<HTMLDivElement>(null);
   const [isNavVisible, setIsNavVisible] = useState<boolean>(true);
+  const [, startNavTransition] = useTransition();
 
   React.useEffect(() => {
     setIsNavVisible(true);
+
+    // This floating pill is desktop-only — skip the observer entirely on mobile.
+    if (window.matchMedia("(max-width: 639px)").matches) return;
+
     const el = navRef.current;
     if (!el) return;
     const observer = new IntersectionObserver(
-      ([entry]) => setIsNavVisible(entry.isIntersecting),
-      { threshold: 0.5 },
+      ([entry]) => {
+        const nextVisible = entry.isIntersecting;
+        // Use startTransition so this state update is low-priority and never
+        // interrupts an in-progress scroll/paint.
+        startNavTransition(() => {
+          setIsNavVisible((prev) =>
+            prev === nextVisible ? prev : nextVisible,
+          );
+        });
+      },
+      { threshold: 0.1, rootMargin: "0px 0px -60px 0px" },
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -181,9 +195,12 @@ export default function App() {
     email?: string;
   }>({});
 
-  // Automatically scroll to top of window when current page/step changes
+  // Reset scroll position on step change without smooth animation to avoid scroll lock/stutter.
   React.useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    const rafId = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    });
+    return () => window.cancelAnimationFrame(rafId);
   }, [currentStep]);
 
   // Reset reservation flow
@@ -552,7 +569,7 @@ export default function App() {
   }
 
   return (
-    <div className="w-full min-h-screen overflow-x-hidden bg-[#0F0F10] text-[#E4E4E7] font-sans antialiased relative pt-8 pb-32 sm:py-12 px-4 md:px-8 selection:bg-amber-500 selection:text-stone-900">
+    <div className="w-full min-h-screen bg-[#0F0F10] text-[#E4E4E7] font-sans antialiased relative pt-8 pb-32 sm:py-12 px-4 md:px-8 selection:bg-amber-500 selection:text-stone-900">
       {/* SMS Verification Modal */}
       <SmsModal
         phone={bookingState.customer.phone}
