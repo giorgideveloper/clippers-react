@@ -23,6 +23,11 @@ export default defineConfig(() => {
           changeOrigin: true,
           secure: true,
         },
+        "/auth": {
+          target: "https://theclippers.ge",
+          changeOrigin: true,
+          secure: true,
+        },
       },
     },
   };

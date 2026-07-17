@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { BookingState, Booking, Barber, Service, BarberStatus } from "./types";
 import { ServiceSelection } from "./components/ServiceSelection";
 import { BarberSelection } from "./components/BarberSelection";
@@ -31,6 +32,7 @@ import {
   saveServices,
 } from "./utils/storage";
 import { AdminDashboard } from "./components/admin/AdminDashboard";
+import { AdminLogin } from "./components/admin/AdminLogin";
 import {
   fetchBarbers,
   fetchServices,
@@ -38,11 +40,29 @@ import {
   sendSmsCode,
   fetchAllBookings,
 } from "./services/api";
+import {
+  ensureDashboardSession,
+  hasStoredAuthTokens,
+  loginDashboard,
+  logoutDashboard,
+} from "./services/auth";
 import { SmsModal } from "./components/SmsModal";
 
 export default function App() {
   const { t, language } = useLanguage();
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() =>
+    hasStoredAuthTokens(),
+  );
+  const [isAuthChecking, setIsAuthChecking] = useState<boolean>(false);
+  const [loginSubmitting, setLoginSubmitting] = useState<boolean>(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const isDashboardPath =
+    location.pathname === "/dashboard" || location.pathname === "/dashboard/";
+  const isDashboardLoginPath =
+    location.pathname === "/dashboard/login" ||
+    location.pathname === "/dashboard/login/";
   const [bookings, setBookings] = useState<Booking[]>(() => loadBookings());
   const [barbers, setBarbers] = useState<Barber[]>(() => loadBarbers());
   const [services, setServices] = useState<Service[]>(() => loadServices());
@@ -77,7 +97,7 @@ export default function App() {
 
   // Fetch real bookings from API whenever the admin panel is opened
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!(isDashboardPath && isAuthenticated)) return;
     fetchAllBookings(barbers, services)
       .then((apiBookings) => {
         setBookings(apiBookings);
@@ -87,7 +107,38 @@ export default function App() {
         // Silently keep whatever is already in state
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin]);
+  }, [isDashboardPath, isAuthenticated]);
+
+  // Protect dashboard route by validating current access token or refreshing it.
+  useEffect(() => {
+    if (!isDashboardPath) return;
+
+    let cancelled = false;
+    setIsAuthChecking(true);
+
+    ensureDashboardSession()
+      .then((ok) => {
+        if (cancelled) return;
+        setIsAuthenticated(ok);
+        if (!ok) {
+          navigate("/dashboard/login", { replace: true });
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setIsAuthenticated(false);
+        navigate("/dashboard/login", { replace: true });
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsAuthChecking(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isDashboardPath, navigate]);
 
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [direction, setDirection] = useState<number>(1); // 1 = forward, -1 = backward
@@ -379,6 +430,33 @@ export default function App() {
       .catch(() => {});
   };
 
+  const handleAdminLogin = async (username: string, password: string) => {
+    if (!username || !password) {
+      setLoginError("Username and password are required.");
+      return;
+    }
+
+    setLoginSubmitting(true);
+    setLoginError(null);
+
+    try {
+      await loginDashboard(username, password);
+      setIsAuthenticated(true);
+      navigate("/dashboard", { replace: true });
+    } catch {
+      setIsAuthenticated(false);
+      setLoginError("Login failed. Please check your credentials.");
+    } finally {
+      setLoginSubmitting(false);
+    }
+  };
+
+  const handleAdminLogout = async () => {
+    await logoutDashboard();
+    setIsAuthenticated(false);
+    navigate("/dashboard/login", { replace: true });
+  };
+
   // Render the corresponding form wizard view
   const renderStepContent = () => {
     switch (currentStep) {
@@ -426,7 +504,36 @@ export default function App() {
     }
   };
 
-  if (isAdmin) {
+  if (isDashboardLoginPath) {
+    if (isAuthenticated) {
+      return <Navigate to="/dashboard" replace />;
+    }
+
+    return (
+      <AdminLogin
+        isSubmitting={loginSubmitting}
+        error={loginError}
+        onSubmit={handleAdminLogin}
+        onBack={() => navigate("/")}
+      />
+    );
+  }
+
+  if (isDashboardPath) {
+    if (isAuthChecking) {
+      return (
+        <div className="min-h-screen bg-[#0F0F10] text-stone-300 flex items-center justify-center px-4">
+          <p className="text-xs font-mono uppercase tracking-widest text-amber-400">
+            Verifying secure dashboard session...
+          </p>
+        </div>
+      );
+    }
+
+    if (!isAuthenticated) {
+      return <Navigate to="/dashboard/login" replace />;
+    }
+
     return (
       <AdminDashboard
         bookings={bookings}
@@ -438,7 +545,8 @@ export default function App() {
         onAddBarber={handleAddBarber}
         onUpdateService={handleUpdateService}
         onResetDatabase={handleResetDatabase}
-        onSwitchToClient={() => setIsAdmin(false)}
+        onSwitchToClient={() => navigate("/")}
+        onLogout={handleAdminLogout}
       />
     );
   }
@@ -474,13 +582,13 @@ export default function App() {
             <div className="flex items-center gap-2.5 ml-auto sm:ml-0">
               <LanguageSwitcher />
 
-              <button
-                onClick={() => setIsAdmin(true)}
+              {/* <button
+                onClick={() => navigate("/dashboard")}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] uppercase font-mono tracking-wider font-bold bg-stone-900 border border-stone-800 text-stone-300 hover:text-amber-400 hover:border-amber-500/30 rounded-xl cursor-pointer transition-colors"
               >
                 <Lock className="w-3.5 h-3.5 text-amber-500" />{" "}
                 <Translate id="access_owner" fallback="Access Owner Panel" />
-              </button>
+              </button> */}
             </div>
           </div>
 

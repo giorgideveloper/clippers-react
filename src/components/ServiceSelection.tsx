@@ -130,6 +130,7 @@ export function ServiceSelection({
 }: ServiceSelectionProps) {
   const { t } = useLanguage();
   const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [showAllServices, setShowAllServices] = useState<boolean>(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeSheetService, setActiveSheetService] = useState<Service | null>(
     null,
@@ -139,6 +140,10 @@ export function ServiceSelection({
     activeCategory === "all"
       ? services
       : services.filter((s) => s.category === activeCategory);
+
+  const visibleServices = showAllServices
+    ? filteredServices
+    : filteredServices.slice(0, 6);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -201,7 +206,10 @@ export function ServiceSelection({
             return (
               <button
                 key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
+                onClick={() => {
+                  setActiveCategory(cat.id);
+                  setShowAllServices(false);
+                }}
                 className={`h-11 px-5 text-xs font-semibold tracking-widest uppercase rounded-full transition-all duration-300 flex items-center justify-center cursor-pointer select-none border ${
                   isActive
                     ? "bg-amber-500 text-stone-950 border-amber-400 font-extrabold shadow-lg shadow-amber-500/25"
@@ -222,7 +230,7 @@ export function ServiceSelection({
         animate="show"
         className="hidden sm:grid grid-cols-1 sm:grid-cols-2 gap-4"
       >
-        {filteredServices.map((service) => {
+        {visibleServices.map((service) => {
           const isSelected = selectedService?.id === service.id;
           const isExpanded = expandedId === service.id;
 
@@ -374,7 +382,7 @@ export function ServiceSelection({
         animate="show"
         className="flex sm:hidden flex-col gap-2.5"
       >
-        {filteredServices.map((service) => {
+        {visibleServices.map((service) => {
           const isSelected = selectedService?.id === service.id;
           const isExpanded = expandedId === service.id;
 
@@ -512,6 +520,22 @@ export function ServiceSelection({
           );
         })}
       </motion.div>
+
+      {filteredServices.length > 6 && (
+        <div className="flex justify-center pt-1">
+          <button
+            onClick={() => setShowAllServices((prev) => !prev)}
+            className="h-10 px-5 rounded-full border border-stone-800 bg-stone-900/50 hover:bg-stone-900 text-stone-300 hover:text-amber-400 text-[11px] uppercase tracking-widest font-mono font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+          >
+            <ChevronDown
+              className={`w-3.5 h-3.5 transition-transform ${showAllServices ? "rotate-180" : ""}`}
+            />
+            {showAllServices
+              ? t("show_less_services", "დანარჩენის დამალვა")
+              : t("show_all_services", "დანარჩენის ნახვა")}
+          </button>
+        </div>
+      )}
 
       {/* Dynamic Detail Bottom Sheets instead of standard confirmation Dialogs */}
       <BottomSheet

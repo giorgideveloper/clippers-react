@@ -21,7 +21,8 @@ import {
   Sparkles,
   MapPin,
   Trash2,
-  Lock
+  Lock,
+  LogOut,
 } from "lucide-react";
 
 interface AdminDashboardProps {
@@ -31,10 +32,15 @@ interface AdminDashboardProps {
   onUpdateBookingStatus: (bookingId: string, status: Booking["status"]) => void;
   onRescheduleBooking: (bookingId: string, date: string, time: string) => void;
   onUpdateBarberStatus: (barberId: string, status: BarberStatus) => void;
-  onAddBarber: (newBarber: { name: string; specialty: string; avatarUrl: string }) => void;
+  onAddBarber: (newBarber: {
+    name: string;
+    specialty: string;
+    avatarUrl: string;
+  }) => void;
   onUpdateService: (service: Service) => void;
   onResetDatabase: () => void;
   onSwitchToClient: () => void;
+  onLogout: () => void;
 }
 
 type TabType = "overview" | "schedule" | "barbers" | "services" | "settings";
@@ -49,7 +55,8 @@ export function AdminDashboard({
   onAddBarber,
   onUpdateService,
   onResetDatabase,
-  onSwitchToClient
+  onSwitchToClient,
+  onLogout,
 }: AdminDashboardProps) {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
@@ -57,11 +64,31 @@ export function AdminDashboard({
 
   // Tabs declaration
   const NAVIGATION_ITEMS = [
-    { id: "overview", label: t("nav_overview", "Overview"), icon: <LayoutDashboard className="w-4 h-4" /> },
-    { id: "schedule", label: t("nav_schedule", "Live Schedule"), icon: <Calendar className="w-4 h-4" /> },
-    { id: "barbers", label: t("nav_barbers", "Barber Staff"), icon: <Users className="w-4 h-4" /> },
-    { id: "services", label: t("nav_services", "Service Catalog"), icon: <Scissors className="w-4 h-4" /> },
-    { id: "settings", label: t("nav_settings", "Settings Hub"), icon: <Settings className="w-4 h-4" /> }
+    {
+      id: "overview",
+      label: t("nav_overview", "Overview"),
+      icon: <LayoutDashboard className="w-4 h-4" />,
+    },
+    {
+      id: "schedule",
+      label: t("nav_schedule", "Live Schedule"),
+      icon: <Calendar className="w-4 h-4" />,
+    },
+    {
+      id: "barbers",
+      label: t("nav_barbers", "Barber Staff"),
+      icon: <Users className="w-4 h-4" />,
+    },
+    {
+      id: "services",
+      label: t("nav_services", "Service Catalog"),
+      icon: <Scissors className="w-4 h-4" />,
+    },
+    {
+      id: "settings",
+      label: t("nav_settings", "Settings Hub"),
+      icon: <Settings className="w-4 h-4" />,
+    },
   ];
 
   const handleTabChange = (tabId: TabType) => {
@@ -109,7 +136,10 @@ export function AdminDashboard({
           <div className="space-y-6">
             <div className="space-y-1">
               <h2 className="text-2xl font-light uppercase tracking-wide text-stone-100">
-                Settings & <span className="text-amber-400 font-semibold font-serif">Controls</span>
+                Settings &{" "}
+                <span className="text-amber-400 font-semibold font-serif">
+                  Controls
+                </span>
               </h2>
               <p className="text-xs text-stone-400 font-mono">
                 CLEANUP WORKSPACE, RE-POPULATE SIMULATED DATABASES
@@ -117,7 +147,6 @@ export function AdminDashboard({
             </div>
 
             <div className="bg-[#141416]/95 border border-stone-850 rounded-2xl p-6 space-y-6 max-w-2xl shadow-xl">
-              
               {/* Reset database card option */}
               <div className="space-y-4">
                 <div className="space-y-1.5">
@@ -125,7 +154,10 @@ export function AdminDashboard({
                     Wipe State & Re-populate Default Database
                   </h3>
                   <p className="text-xs text-stone-400 leading-relaxed font-light">
-                    This completely wipes existing appointments, catalogs, and staff availability status from your current local preview cache, then restores the pristine defaults. Excellent for verifying empty states and starting a clean test.
+                    This completely wipes existing appointments, catalogs, and
+                    staff availability status from your current local preview
+                    cache, then restores the pristine defaults. Excellent for
+                    verifying empty states and starting a clean test.
                   </p>
                 </div>
 
@@ -149,16 +181,19 @@ export function AdminDashboard({
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-stone-400">
                   <div className="p-3 bg-stone-900/40 rounded-lg border border-stone-850">
-                    <span className="block font-mono text-[9px] uppercase font-bold text-stone-550 mb-0.5">Physical Salon</span>
+                    <span className="block font-mono text-[9px] uppercase font-bold text-stone-550 mb-0.5">
+                      Physical Salon
+                    </span>
                     <span>72 Regent Imperial Blvd, New York</span>
                   </div>
                   <div className="p-3 bg-stone-900/40 rounded-lg border border-stone-850">
-                    <span className="block font-mono text-[9px] uppercase font-bold text-stone-550 mb-0.5">Manager Desk Hotline</span>
+                    <span className="block font-mono text-[9px] uppercase font-bold text-stone-550 mb-0.5">
+                      Manager Desk Hotline
+                    </span>
                     <span>+1 (212) 555-0104</span>
                   </div>
                 </div>
               </div>
-
             </div>
           </div>
         );
@@ -169,21 +204,25 @@ export function AdminDashboard({
 
   return (
     <div className="min-h-screen bg-[#0F0F10] text-[#E4E4E7] flex flex-col md:flex-row relative overflow-x-hidden selection:bg-amber-400 selection:text-stone-900">
-      
       {/* BACKGROUND DECORATIVE GLOW */}
       <div className="absolute top-[-200px] right-[-200px] w-[600px] h-[600px] rounded-full bg-amber-500/5 blur-[150px] pointer-events-none" />
 
       {/* DESKTOP SIDEBAR (visible on md+) */}
       <aside className="hidden md:flex flex-col justify-between w-64 bg-[#141416] border-r border-stone-850/60 p-6 flex-shrink-0 z-30">
         <div className="space-y-8">
-          
           {/* Logo Brand Brand */}
           <div className="space-y-1">
             <span className="font-mono text-[9px] tracking-widest font-bold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
-              <Translate id="admin_control_desk" fallback="ADMIN CONTROL DESK" />
+              <Translate
+                id="admin_control_desk"
+                fallback="ADMIN CONTROL DESK"
+              />
             </span>
             <h1 className="text-xl font-light tracking-widest uppercase text-stone-100 pt-1">
-              <Translate id="admin_brand_sovereign" fallback="SOVEREIGN" /> <span className="font-serif italic font-medium text-amber-500"><Translate id="brand_suffix" fallback="Club" /></span>
+              <Translate id="admin_brand_sovereign" fallback="SOVEREIGN" />{" "}
+              <span className="font-serif italic font-medium text-amber-500">
+                <Translate id="brand_suffix" fallback="Club" />
+              </span>
             </h1>
           </div>
 
@@ -218,10 +257,17 @@ export function AdminDashboard({
         <div className="pt-6 border-t border-stone-850 space-y-4">
           <LanguageSwitcher horizontal={true} />
           <button
+            onClick={onLogout}
+            className="w-full py-2.5 font-mono text-[10px] tracking-widest font-black uppercase rounded-lg border border-red-500/30 text-red-300 hover:text-red-200 hover:bg-red-950/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" /> Logout
+          </button>
+          <button
             onClick={onSwitchToClient}
             className="w-full py-2.5 font-mono text-[10px] tracking-widest font-black uppercase rounded-lg border border-stone-800 text-stone-400 hover:text-stone-200 hover:bg-stone-900 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            <CornerUpLeft className="w-3.5 h-3.5" /> <Translate id="btn_client_chair" fallback="Book Client chair" />
+            <CornerUpLeft className="w-3.5 h-3.5" />{" "}
+            <Translate id="btn_client_chair" fallback="Book Client chair" />
           </button>
         </div>
       </aside>
@@ -230,14 +276,27 @@ export function AdminDashboard({
       <header className="md:hidden flex items-center justify-between px-4 py-3 bg-[#141416]/98 border-b border-stone-850 z-40 sticky top-0 backdrop-blur-md">
         <div className="space-y-0.5">
           <h1 className="text-sm font-light tracking-widest uppercase text-stone-100 flex items-center gap-1">
-            <Translate id="admin_brand_sovereign" fallback="Sovereign" /> <span className="font-serif italic text-amber-400 font-bold"><Translate id="admin_suffix" fallback="Admin" /></span>
+            <Translate id="admin_brand_sovereign" fallback="Sovereign" />{" "}
+            <span className="font-serif italic text-amber-400 font-bold">
+              <Translate id="admin_suffix" fallback="Admin" />
+            </span>
           </h1>
-          <span className="text-[8px] font-mono tracking-wider uppercase text-stone-500 block"><Translate id="console_center" fallback="Console center" /></span>
+          <span className="text-[8px] font-mono tracking-wider uppercase text-stone-500 block">
+            <Translate id="console_center" fallback="Console center" />
+          </span>
         </div>
 
         <div className="flex items-center gap-2">
           {/* Language selection dropdown on mobile */}
           <LanguageSwitcher />
+
+          <button
+            onClick={onLogout}
+            className="p-1.5 h-[33px] px-2 rounded-xl border border-red-500/30 bg-red-950/20 text-red-300 hover:bg-red-950/35 flex items-center justify-center"
+            title="Logout"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
 
           {/* Client Booking Button */}
           <button
@@ -254,7 +313,11 @@ export function AdminDashboard({
             className="p-1.5 h-[33px] px-2 rounded-xl border border-stone-800 text-amber-400 bg-stone-900 flex items-center justify-center"
             title="Open Drawer"
           >
-            {isMobileDrawerOpen ? <X className="w-4.5 h-4.5" /> : <Menu className="w-4.5 h-4.5" />}
+            {isMobileDrawerOpen ? (
+              <X className="w-4.5 h-4.5" />
+            ) : (
+              <Menu className="w-4.5 h-4.5" />
+            )}
           </button>
         </div>
       </header>
@@ -315,10 +378,20 @@ export function AdminDashboard({
               <div className="pt-6 border-t border-stone-850 space-y-4">
                 <LanguageSwitcher horizontal={true} />
                 <button
+                  onClick={onLogout}
+                  className="w-full py-3 text-[10px] uppercase font-bold tracking-widest font-mono rounded-xl border border-red-500/30 text-red-300 flex items-center justify-center gap-1.5"
+                >
+                  <LogOut className="w-4 h-4" /> Logout
+                </button>
+                <button
                   onClick={onSwitchToClient}
                   className="w-full py-3 text-[10px] uppercase font-bold tracking-widest font-mono rounded-xl border border-stone-800 text-stone-300 flex items-center justify-center gap-1.5"
                 >
-                  <CornerUpLeft className="w-4 h-4" /> <Translate id="btn_client_chair" fallback="Book Client chair" />
+                  <CornerUpLeft className="w-4 h-4" />{" "}
+                  <Translate
+                    id="btn_client_chair"
+                    fallback="Book Client chair"
+                  />
                 </button>
               </div>
             </motion.div>
@@ -340,7 +413,9 @@ export function AdminDashboard({
               key={`bottom-${item.id}`}
               onClick={() => handleTabChange(item.id as TabType)}
               className={`flex flex-col items-center justify-center flex-1 h-full rounded-lg transition-colors ${
-                isActive ? "text-amber-400" : "text-stone-500 hover:text-stone-300"
+                isActive
+                  ? "text-amber-400"
+                  : "text-stone-500 hover:text-stone-300"
               }`}
             >
               {item.icon}
@@ -351,7 +426,6 @@ export function AdminDashboard({
           );
         })}
       </div>
-
     </div>
   );
 }
